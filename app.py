@@ -1,9 +1,8 @@
 import streamlit as st
 import requests
-import json
-import re
-from streamlit_autorefresh import st_autorefresh
 import pandas as pd
+from streamlit_autorefresh import st_autorefresh
+from datetime import datetime
 
 st.set_page_config(page_title="天气交易系统", layout="centered")
 
@@ -11,85 +10,54 @@ st.set_page_config(page_title="天气交易系统", layout="centered")
 st_autorefresh(interval=30000, key="refresh")
 
 # ======================
-# 获取 METAR
+# 获取 METAR 历史数据（最近24小时）
 # ======================
-def get_metar():
+def get_today_metar():
     try:
-        url = "https://tgftp.nws.noaa.gov/data/observations/metar/stations/ZSPD.TXT"
-        res = requests.get(url, timeout=5).text
-        return res.split("\n")[1]
-    except:
-        return None
-
-# ======================
-# 解析 METAR（时间+温度）
-# ======================
-def parse_metar(metar):
-    if not metar:
-        return None, None
-
-    time_match = re.search(r'(\d{6})Z', metar)
-    temp_match = re.search(r' (\d{2})/(\d{2}) ', metar)
-
-    if not time_match or not temp_match:
-        return None, None
-
-    metar_time = time_match.group(1)  # 230600
-    temp = int(temp_match.group(1))
-
-    return metar_time, temp
-
-# ======================
-# 获取真实数据
-# ======================
-def get_real_data():
-    metar = get_metar()
-    return parse_metar(metar)
-
-# ======================
-# 保存数据（用METAR时间去重）
-# ======================
-def save_temp(metar_time, temp):
-    try:
-        with open("data.json", "r") as f:
-            data = json.load(f)
-    except:
-        data = []
-
-    if temp is None or metar_time is None:
-        return data
-
-    # 核心：用 METAR 时间去重
-    if len(data) > 0 and data[-1]["metar_time"] == metar_time:
-        return data
-
-    data.append({
-        "metar_time": metar_time,
-        "temp": temp
-    })
-
-    with open("data.json", "w") as f:
-        json.dump(data, f)
-
-    return data
-
-# ======================
-# 读取数据
-# ======================
-def load_data():
-    try:
-        with open("data.json", "r") as f:
-            return json.load(f)
+        url = "https://aviationweather.gov/api/data/metar?ids=ZSPD&format=json&hours=24"
+        res = requests.get(url, timeout=10).json()
+        return res
     except:
         return []
 
 # ======================
-# 最高温
+# 过滤“今天数据”
 # ======================
-def get_max_temp(data):
-    if not data:
-        return None
-    return max(x["temp"] for x in data)
+def filter_today(data):
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    return [x for x in data if today in x.get("obsTime", "")]
+
+# ======================
+# 解析数据
+# ======================
+def parse_metar_list(data):
+    result = []
+
+    for item in data:
+        try:
+            temp = item.get("temp")
+            time = item.get("obsTime")[11:16]  # HH:MM
+
+            if temp is not None:
+                result.append({
+                    "time": time,
+                    "temp": temp
+                })
+        except:
+            continue
+
+    # 按时间排序
+    result.sort(key=lambda x: x["time"])
+    return result
+
+# ======================
+# 获取完整数据（核心）
+# ======================
+def get_today_data():
+    raw = get_today_metar()
+    today_data = filter_today(raw)
+    parsed = parse_metar_list(today_data)
+    return parsed
 
 # ======================
 # 升温速度
@@ -99,7 +67,7 @@ def calc_speed(data):
         return 0
     t1 = data[-2]["temp"]
     t2 = data[-1]["temp"]
-    return (t2 - t1) * 2  # 半小时 → 每小时
+    return (t2 - t1) * 2
 
 # ======================
 # 是否见顶
@@ -146,29 +114,37 @@ def get_market():
 # ======================
 # UI
 # ======================
-st.title("🌡️ 天气交易系统（METAR对齐版）")
+st.title("🌡️ 天气交易系统（完整历史版）")
 
-metar_time, temp = get_real_data()
-data = save_temp(metar_time, temp)
+data = get_today_data()
 
+# 当前温度 = 最后一条
+current_temp = data[-1]["temp"] if data else None
+
+# 最高温
+max_temp = max([x["temp"] for x in data]) if data else None
+
+# 趋势
 speed = calc_speed(data)
 peak = is_peaking(data)
-market = get_market()
-model = model_probs(temp, speed)
 
-# 当前
+market = get_market()
+model = model_probs(current_temp, speed)
+
+# 当前数据
 st.subheader("🌡️ 当前数据")
 
-st.metric("当前温度", f"{temp}°C" if temp else "N/A")
-st.metric("今日最高温", f"{get_max_temp(data)}°C" if data else "N/A")
+st.metric("当前温度", f"{current_temp}°C" if current_temp else "N/A")
+st.metric("今日最高温", f"{max_temp}°C" if max_temp else "N/A")
 
-# 曲线（修复版）
+# 曲线
 st.subheader("📈 温度曲线（METAR）")
 
 if data:
     df = pd.DataFrame(data)
-    df["time"] = df["metar_time"].str[2:4] + ":" + df["metar_time"].str[4:6]
     st.line_chart(df.set_index("time")["temp"])
+else:
+    st.warning("暂无数据")
 
 # 趋势
 st.subheader("📊 趋势分析")
