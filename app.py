@@ -1,92 +1,128 @@
 import streamlit as st
 import requests
 import json
+import re
+from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
+import pandas as pd
 
-LAT = 31.1443
-LON = 121.8083
-BANKROLL = 10000
-
-# -----------------------
+# ======================
 # 自动刷新（30秒）
-# -----------------------
+# ======================
 st_autorefresh(interval=30000, key="refresh")
 
 st.set_page_config(page_title="天气交易系统", layout="centered")
 
-# -----------------------
-# 缓存（关键）
-# -----------------------
-@st.cache_data(ttl=30)
-def get_temp():
+# ======================
+# 获取 METAR（ZSPD）
+# ======================
+def get_metar():
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current_weather=true"
-        res = requests.get(url, timeout=5).json()
-        return res["current_weather"]["temperature"]
+        url = "https://tgftp.nws.noaa.gov/data/observations/metar/stations/ZSPD.TXT"
+        res = requests.get(url, timeout=5).text
+        return res.split("\n")[1]
     except:
         return None
 
-@st.cache_data(ttl=60)
-def get_market():
+# ======================
+# 解析温度
+# ======================
+def parse_temp(metar):
+    if not metar:
+        return None
+    
+    match = re.search(r' (\d{2})/(\d{2}) ', metar)
+    if match:
+        return int(match.group(1))
+    return None
+
+# ======================
+# 获取真实温度
+# ======================
+def get_real_temp():
+    metar = get_metar()
+    return parse_temp(metar)
+
+# ======================
+# 保存数据（去重）
+# ======================
+def save_temp(temp):
+    now = datetime.now().strftime("%H:%M")
+
     try:
-        url = "https://gamma-api.polymarket.com/markets"
-        res = requests.get(url, timeout=5).json()
-
-        probs = {"14":0.33,"15":0.34,"16":0.33}
-
-        for m in res:
-            q = m.get("question","")
-
-            if "Shanghai" in q and "temperature" in q:
-                outcomes = m.get("outcomes", [])
-
-                if not outcomes:
-                    continue
-
-                try:
-                    price = float(outcomes[0].get("price",0))
-                except:
-                    continue
-
-                if "14" in q:
-                    probs["14"] = price
-                elif "15" in q:
-                    probs["15"] = price
-                elif "16" in q:
-                    probs["16"] = price
-
-        return probs
+        with open("data.json", "r") as f:
+            data = json.load(f)
     except:
-        return {"14":0.33,"15":0.34,"16":0.33}
+        data = []
 
-# -----------------------
-# 参数读取
-# -----------------------
+    if temp is None:
+        return data
+
+    if len(data) > 0 and data[-1]["time"] == now:
+        return data
+
+    data.append({
+        "time": now,
+        "temp": temp
+    })
+
+    with open("data.json", "w") as f:
+        json.dump(data, f)
+
+    return data
+
+# ======================
+# 读取数据
+# ======================
+def load_data():
+    try:
+        with open("data.json", "r") as f:
+            return json.load(f)
+    except:
+        return []
+
+# ======================
+# 最高温
+# ======================
+def get_max_temp(data):
+    if not data:
+        return None
+    return max([x["temp"] for x in data])
+
+# ======================
+# 升温速度
+# ======================
+def calc_speed(data):
+    if len(data) < 2:
+        return 0
+    t1 = data[-2]["temp"]
+    t2 = data[-1]["temp"]
+    return (t2 - t1) * 2
+
+# ======================
+# 是否见顶
+# ======================
+def is_peaking(data):
+    if len(data) < 3:
+        return False
+    t1 = data[-3]["temp"]
+    t2 = data[-2]["temp"]
+    t3 = data[-1]["temp"]
+    return (t3 - t2) < (t2 - t1)
+
+# ======================
+# 读取参数
+# ======================
 def load_params():
     try:
         with open("params.json","r") as f:
             return json.load(f)
     except:
-        return {"speed":1.0,"hour":10,"updated":"N/A"}
+        return {"speed":1.0,"hour":10}
 
-# -----------------------
-# 模型
-# -----------------------
-def model_probs(temp):
-    if temp is None:
-        return {"14":0.33,"15":0.34,"16":0.33}
-    if temp <= 13:
-        return {"14":0.6,"15":0.3,"16":0.1}
-    elif temp == 14:
-        return {"14":0.4,"15":0.4,"16":0.2}
-    elif temp == 15:
-        return {"14":0.1,"15":0.6,"16":0.3}
-    else:
-        return {"14":0.05,"15":0.3,"16":0.65}
-
-# -----------------------
+# ======================
 # Kelly
-# -----------------------
+# ======================
 def kelly(p, m):
     if m <= 0:
         return 0
@@ -95,33 +131,74 @@ def kelly(p, m):
     f = (b*p - q) / b
     return max(f*0.3, 0)
 
-# -----------------------
+# ======================
+# 模型（基于趋势）
+# ======================
+def model_probs(temp, speed):
+    if temp is None:
+        return {"14":0.33,"15":0.34,"16":0.33}
+
+    if speed > 1:
+        return {"14":0.1,"15":0.4,"16":0.5}
+    elif speed < 0.3:
+        return {"14":0.2,"15":0.6,"16":0.2}
+    else:
+        return {"14":0.2,"15":0.5,"16":0.3}
+
+# ======================
+# 简化市场（先手动填）
+# ======================
+def get_market():
+    # ⚠️ 这里先手动填（确保不出错）
+    return {"14":0.30,"15":0.48,"16":0.22}
+
+# ======================
 # UI
-# -----------------------
-st.title("🌡️ 自动天气交易系统 Pro")
+# ======================
+st.title("🌡️ 天气交易系统（METAR版）")
 
 params = load_params()
-temp = get_temp()
+
+temp = get_real_temp()
+data = save_temp(temp)
+
 market = get_market()
-model = model_probs(temp)
 
-st.subheader("📅 今日策略")
-st.json(params)
+speed = calc_speed(data)
+peak = is_peaking(data)
+model = model_probs(temp, speed)
 
-st.subheader("🌡️ 当前温度")
-if temp:
-    st.metric("温度", f"{temp}°C")
+# 当前数据
+st.subheader("🌡️ 当前数据")
+st.metric("当前温度", f"{temp}°C" if temp else "N/A")
+st.metric("今日最高温", f"{get_max_temp(data)}°C" if data else "N/A")
+
+# 曲线
+st.subheader("📈 温度曲线（METAR）")
+if data:
+    df = pd.DataFrame(data)
+    st.line_chart(df.set_index("time")["temp"])
+
+# 趋势
+st.subheader("📊 趋势分析")
+st.metric("升温速度", f"{speed:.2f} °C/h")
+
+if peak:
+    st.warning("⚠️ 接近峰值")
 else:
-    st.warning("天气数据获取失败")
+    st.success("🔥 仍在上升")
 
-st.subheader("📡 市场（Polymarket）")
+# 市场
+st.subheader("📡 市场概率")
 for k in market:
     st.write(f"{k}°C → {market[k]*100:.1f}%")
 
+# 模型
 st.subheader("🧠 模型概率")
 for k in model:
     st.write(f"{k}°C → {model[k]*100:.1f}%")
 
+# 决策
 st.subheader("💰 交易建议")
 
 best = None
@@ -129,19 +206,17 @@ best_edge = -999
 
 for k in model:
     edge = model[k] - market[k]
-    bet = min(kelly(model[k], market[k]) * BANKROLL, BANKROLL * 0.2)
+    bet = min(kelly(model[k], market[k]) * 10000, 2000)
 
     if edge > best_edge:
         best_edge = edge
         best = k
 
-    st.write(f"{k}°C → Edge {edge*100:.1f}% | 建议 ${bet:.0f}")
+    st.write(f"{k}°C → Edge {edge*100:.1f}% | ${bet:.0f}")
 
-if best_edge > 0.15:
-    st.success(f"🔥 强信号：{best}°C")
-elif best_edge > 0.05:
-    st.info(f"👉 中等信号：{best}°C")
+if best_edge > 0.05:
+    st.success(f"👉 建议下注：{best}°C")
 else:
-    st.warning("⚠️ 无交易机会")
+    st.warning("⚠️ 无明显机会")
 
 st.caption("自动刷新：30秒")
