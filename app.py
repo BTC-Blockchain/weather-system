@@ -299,8 +299,6 @@ if is_new and len(data) >= 2:
     # ✅ 只在新数据时触发声音（100%有效）
 if st.session_state.get("audio_unlocked"):
     try:
-        winsound.Beep(1000, 200)  # 频率Hz，时长ms
-		winsound.Beep(1200, 300)  # 频率Hz，时长ms
 		winsound.Beep(1500, 400)  # 频率Hz，时长ms
     except:
         pass
