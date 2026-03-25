@@ -339,7 +339,7 @@ with col2:
         st.metric("当前温度", f"{current['temp']}°C")
 
     with col_b:
-        st.metric("今日最高", f"{max_temp}°C", delta=max_time_str)
+        st.metric("截至当前已捕获的今日最高温度", f"{max_temp}°C", delta=max_time_str)
 
     st.markdown(f"**METAR最新发布：{formatted_time}**")
 
