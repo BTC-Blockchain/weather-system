@@ -89,12 +89,15 @@ def save_cache(data):
         json.dump(data, f)
 
 # ======================
-# 历史数据（双源）
+# 历史数据（双源修复版：精准拉取本地凌晨数据）
 # ======================
 def init_today_history():
+    # --- 数据源 1：Aviation Weather ---
     try:
         url = "https://aviationweather.gov/api/data/metar"
-        params = {"ids": "ZSPD", "format": "json", "hours": 24}
+        # 优化点 1：将抓取时长增加到 48 小时。
+        # 这样无论当前是下午还是晚上，都能确保覆盖到"昨天"的 UTC 时间，从而不漏掉本地今天凌晨的数据。
+        params = {"ids": "ZSPD", "format": "json", "hours": 48}
         res = requests.get(url, params=params, timeout=3)
         metars = res.json()
 
@@ -106,6 +109,7 @@ def init_today_history():
 
             if temp and obs:
                 dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=8)
+                # 严格过滤，只保留本地当天的记录
                 if dt.date() == now_local().date():
                     data.append({
                         "metar_time": dt.strftime("%d%H%M"),
@@ -121,9 +125,20 @@ def init_today_history():
     except:
         pass
 
+    # --- 数据源 2：Ogimet ---
     try:
-        now = now_local()
-        url = f"https://www.ogimet.com/display_metars2.php?lang=en&lugar=ZSPD&tipo=ALL&ord=REV&nil=NO&fmt=txt&ano={now.year}&mes={now.month}&day={now.day}&hora=00&anof={now.year}&mesf={now.month}&dayf={now.day}&horaf=23&minf=59"
+        now_loc = now_local()
+        # 优化点 2：明确获取本地当天的凌晨 00:00
+        local_start = datetime(now_loc.year, now_loc.month, now_loc.day, 0, 0)
+        # 转换为 Ogimet 需要的 UTC 时间（即前一天的 16:00 UTC）
+        utc_start = local_start - timedelta(hours=8)
+        
+        # 结束时间直接设为当前的 UTC 时间即可
+        utc_end = datetime.utcnow()
+
+        # 将正确转换后的 UTC 年/月/日/时 填入 URL 
+        url = f"https://www.ogimet.com/display_metars2.php?lang=en&lugar=ZSPD&tipo=ALL&ord=REV&nil=NO&fmt=txt&ano={utc_start.year}&mes={utc_start.month:02d}&day={utc_start.day:02d}&hora={utc_start.hour:02d}&anof={utc_end.year}&mesf={utc_end.month:02d}&dayf={utc_end.day:02d}&horaf={utc_end.hour:02d}&minf=59"
+        
         text = requests.get(url, timeout=3).text
         lines = text.split("\n")
 
@@ -142,7 +157,8 @@ def init_today_history():
             temp = int(temp_match.group(1).replace("M", "-"))
             dt = utc_to_local(day, hour, minute)
 
-            if dt.date() == now.date():
+            # 同样严格过滤本地当天数据
+            if dt.date() == now_loc.date():
                 data.append({
                     "metar_time": f"{day}{hour}{minute}",
                     "time": dt.strftime("%Y-%m-%d %H:%M"),
