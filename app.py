@@ -364,7 +364,7 @@ with col2:
     df["time"] = pd.to_datetime(df["time"])
     st.line_chart(df.set_index("time")["temp"])
 
-    st.info("📌 夜间无数据属正常（观测频率降低）")
+    st.info("📌 当系统启动运行时会自动获取当天0点开始的历史数据")
 
     st.markdown("### 🧩 数据完整性")
     gaps = []
