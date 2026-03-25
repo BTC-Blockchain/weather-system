@@ -359,12 +359,12 @@ with col2:
 
     st.markdown(f"**METAR最新发布：{formatted_time}**")
 
+    st.info("📌 当系统启动运行时会自动获取当天0点开始的历史数据以填充温度曲线图")
     st.markdown("### 📈 温度曲线")
     df = pd.DataFrame(data)
     df["time"] = pd.to_datetime(df["time"])
     st.line_chart(df.set_index("time")["temp"])
 
-    st.info("📌 当系统启动运行时会自动获取当天0点开始的历史数据")
 
     st.markdown("### 🧩 数据完整性")
     gaps = []
