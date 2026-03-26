@@ -580,29 +580,31 @@ with col2:
         hovertemplate='时间: %{x|%H:%M}<br>温度: %{y}°C<extra></extra>'
     ))
     
-    # 优化布局与背景
+    # 优化布局与背景（高兼容性版本）
     fig.update_layout(
-        height=350,  # 控制图表高度
-        margin=dict(l=0, r=0, t=10, b=0),  # 消除多余边距
-        plot_bgcolor='rgba(0,0,0,0)',  # 图表背景透明
-        paper_bgcolor='rgba(0,0,0,0)', # 画布背景透明
+        height=350,  
+        margin=dict(l=0, r=0, t=10, b=0),  
+        plot_bgcolor='rgba(0,0,0,0)',  
+        paper_bgcolor='rgba(0,0,0,0)', 
         xaxis=dict(
             showgrid=True, 
-            gridcolor='rgba(0, 170, 255, 0.1)', # 浅蓝色网格线
-            tickformat='%H:%M', # X轴只显示小时:分钟
-            color='#0077aa' # 坐标轴字体颜色
+            gridcolor='rgba(0, 170, 255, 0.1)', 
+            tickformat='%H:%M', 
+            tickfont=dict(color='#0077aa')  # 修复点 1：明确指定刻度文本颜色
         ),
         yaxis=dict(
             showgrid=True, 
             gridcolor='rgba(0, 170, 255, 0.1)',
-            title='温度 (°C)',
-            titlefont=dict(color='#0077aa'),
-            color='#0077aa',
-            zeroline=False # 隐藏Y轴0刻度粗线
+            title=dict(
+                text='温度 (°C)',
+                font=dict(color='#0077aa')  # 修复点 2：使用标准嵌套字典设置标题与颜色
+            ),
+            tickfont=dict(color='#0077aa'), # 修复点 3：明确指定刻度文本颜色
+            zeroline=False 
         ),
-        hovermode='x unified' # 开启科技感极强的全局悬停参考线
+        hovermode='x unified' 
     )
-    
+
     # 使用 Streamlit 渲染图表
     st.plotly_chart(fig, use_container_width=True)
 
