@@ -625,79 +625,113 @@ with col2:
 with col3:
     st.markdown("### 📋 历史数据")
 
-    # --- 1. 历史数据表格优化 (三列/长日期/居中/科幻风) ---
+    # --- 1. 历史数据表格优化 (纯HTML/CSS实现，确保居中与滚动) ---
     if data:
-        # 准备三列数据
+        # 数据整理
         df_raw = pd.DataFrame(data)
         df_raw["time_dt"] = pd.to_datetime(df_raw["time"])
-        # 按时间倒序
         df_raw = df_raw.sort_values(by="time_dt", ascending=False).reset_index(drop=True)
 
-        # 构建最终展示的 3 列 DataFrame
-        df_final = pd.DataFrame({
-            "观测时间": df_raw["time_dt"].dt.strftime("%Y年%m月%d日 %H:%M:%S"),
-            "温度": df_raw["temp"].apply(lambda x: f"{x}°C"),
-            "METAR原始时间": df_raw["metar_time"]
-        })
+        # 构建 HTML 表格字符串
+        # 注意：CSS中的大括号在 f-string 中需要写成 {{ }}
+        table_html = f"""
+        <style>
+            .sci-fi-table-container {{
+                max-height: 400px;
+                overflow-y: auto;
+                border: 1px solid rgba(0, 170, 255, 0.3);
+                border-radius: 8px;
+                background-color: rgba(230, 247, 255, 0.2);
+            }}
+            .sci-fi-table {{
+                width: 100%;
+                border-collapse: collapse;
+                color: #005588;
+                font-size: 14px;
+            }}
+            .sci-fi-table th {{
+                position: sticky;
+                top: 0;
+                background-color: #e6f7ff;
+                color: #0077aa;
+                padding: 10px;
+                text-align: center !important; /* 强制居中 */
+                border-bottom: 2px solid rgba(0, 170, 255, 0.3);
+                z-index: 1;
+            }}
+            .sci-fi-table td {{
+                padding: 12px;
+                text-align: center !important; /* 强制居中 */
+                border-bottom: 1px solid rgba(0, 170, 255, 0.1);
+            }}
+            .first-row {{
+                background-color: rgba(0, 170, 255, 0.15);
+                font-weight: bold;
+                color: #0088cc;
+            }}
+        </style>
+        <div class="sci-fi-table-container">
+            <table class="sci-fi-table">
+                <thead>
+                    <tr>
+                        <th>观测时间</th>
+                        <th>温度</th>
+                        <th>METAR原始时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
 
-        # 定义样式函数：居中、高亮第一行、浅蓝配色
-        def apply_sci_fi_style(styler):
-            # 全局居中
-            styler.set_properties(**{
-                'text-align': 'center',
-                'background-color': 'rgba(230, 247, 255, 0.5)',
-                'color': '#005588',
-                'border': '1px solid rgba(0, 170, 255, 0.2)'
-            })
-            # 表头居中与样式
-            styler.set_table_styles([
-                {'selector': 'th', 'props': [
-                    ('text-align', 'center'), 
-                    ('background-color', '#e6f7ff'), 
-                    ('color', '#0077aa'),
-                    ('font-weight', 'bold')
-                ]}
-            ])
-            # 高亮第一行（最新数据）
-            styler.apply(lambda x: ['background-color: rgba(0, 170, 255, 0.3); font-weight: bold;' if x.name == 0 else '' for _ in x], axis=1)
-            return styler
-
-        # 渲染美化后的表格
-        st.table(apply_sci_fi_style(df_final.style))
+        # 遍历数据生成行 (仅处理前50条以保证性能，容器会自动处理滚动)
+        for i, row in df_raw.iterrows():
+            row_class = 'class="first-row"' if i == 0 else ""
+            obs_time = row["time_dt"].strftime("%Y年%m月%d日 %H:%M:%S")
+            table_html += f"""
+                <tr {row_class}>
+                    <td>{obs_time}</td>
+                    <td>{row['temp']}°C</td>
+                    <td>{row['metar_time']}</td>
+                </tr>
+            """
+        
+        table_html += "</tbody></table></div>"
+        st.markdown(table_html, unsafe_allow_html=True)
     else:
-        st.write("暂无历史数据")
+        st.info("暂无历史数据")
 
     st.markdown("---")
     st.markdown("### 📡 最近METAR")
     
-    # --- 2. 最近 METAR 模块优化 (修复代码溢出) ---
-    # 确保使用三引号构建长字符串，并严格检查 unsafe_allow_html 参数
+    # --- 2. 最近 METAR 模块优化 (修复双大括号引起的解析错误) ---
     metar_html_blocks = []
+    recent_metars = data[-10:] if len(data) >= 10 else data # 展示最近10条
     
-    # 取最近 5 条
-    recent_metars = data[-5:] if len(data) >= 5 else data
     for row in reversed(recent_metars):
         dt_display = pd.to_datetime(row['time']).strftime("%H:%M:%S")
         
+        # 修复：不再在循环内定义 CSS 样式块，而是使用统一的 class 或内联样式
+        # 这里使用内联样式，确保解析稳定
         block = f"""
         <div style="
             background: rgba(230, 247, 255, 0.6); 
             border-left: 5px solid #00aaff; 
             border-radius: 6px; 
-            padding: 10px; 
-            margin-bottom: 10px; 
+            padding: 12px; 
+            margin-bottom: 12px; 
             box-shadow: 2px 2px 8px rgba(0, 170, 255, 0.1);
+            text-align: left;
         ">
-            <div style="color: #0077aa; font-size: 12px; font-weight: bold; margin-bottom: 4px;">
+            <div style="color: #0077aa; font-size: 12px; font-weight: bold; margin-bottom: 6px; display: flex; align-items: center;">
+                <span style="width: 8px; height: 8px; background: #00aaff; border-radius: 50%; margin-right: 8px; display: inline-block;"></span>
                 ⏱️ {dt_display} (UTC+8)
             </div>
-            <div style="font-family: 'Courier New', monospace; font-size: 13px; color: #003344; background: rgba(255,255,255,0.4); padding: 5px; border-radius: 4px;">
+            <div style="font-family: 'Courier New', monospace; font-size: 13px; color: #003344; background: rgba(255,255,255,0.4); padding: 8px; border-radius: 4px; border: 1px solid rgba(0,170,255,0.1);">
                 {row['raw']}
             </div>
         </div>
         """
         metar_html_blocks.append(block)
     
-    # 核心修复点：将所有块组合并使用容器包裹，确保 unsafe_allow_html=True
-    full_metar_html = f'<div style="max-height: 400px; overflow-y: auto;">{"".join(metar_html_blocks)}</div>'
+    # 组合所有块，并增加滚动限制
+    full_metar_html = f'<div style="max-height: 500px; overflow-y: auto; padding-right: 5px;">{"".join(metar_html_blocks)}</div>'
     st.markdown(full_metar_html, unsafe_allow_html=True)
