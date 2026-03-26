@@ -625,62 +625,79 @@ with col2:
 with col3:
     st.markdown("### 📋 历史数据")
 
-    # --- 1. 历史数据表格优化 ---
-    # 数据预处理：提取展示需要的列，并确保最新数据在最上方
-    df_table = pd.DataFrame(data)
-    df_table["time"] = pd.to_datetime(df_table["time"])
-    df_table = df_table.sort_values(by="time", ascending=False).reset_index(drop=True)
-    
-    # 为了展示美观，精简列名并只保留核心数据
-    df_display = pd.DataFrame()
-    df_display["观测时间"] = df_table["time"].dt.strftime("%H:%M")
-    df_display["温度 (°C)"] = df_table["temp"]
+    # --- 1. 历史数据表格优化 (三列/长日期/居中/科幻风) ---
+    if data:
+        # 准备三列数据
+        df_raw = pd.DataFrame(data)
+        df_raw["time_dt"] = pd.to_datetime(df_raw["time"])
+        # 按时间倒序
+        df_raw = df_raw.sort_values(by="time_dt", ascending=False).reset_index(drop=True)
 
-    # 定义科幻感高亮样式函数
-    def style_dataframe(row):
-        if row.name == 0:
-            # 最新一条：浅蓝底色，深蓝色加粗字体，突出实时感
-            return ['background-color: rgba(0, 170, 255, 0.2); color: #005588; font-weight: 900;'] * len(row)
-        # 其他历史数据：极淡的白底透明，普通蓝色文字
-        return ['background-color: rgba(255, 255, 255, 0.4); color: #0077aa;'] * len(row)
+        # 构建最终展示的 3 列 DataFrame
+        df_final = pd.DataFrame({
+            "观测时间": df_raw["time_dt"].dt.strftime("%Y年%m月%d日 %H:%M:%S"),
+            "温度": df_raw["temp"].apply(lambda x: f"{x}°C"),
+            "METAR原始时间": df_raw["metar_time"]
+        })
 
-    # 应用样式并使用 Streamlit 渲染（隐藏原本杂乱的索引列）
-    styled_df = df_display.style.apply(style_dataframe, axis=1)
-    st.dataframe(styled_df, use_container_width=True, hide_index=True)
+        # 定义样式函数：居中、高亮第一行、浅蓝配色
+        def apply_sci_fi_style(styler):
+            # 全局居中
+            styler.set_properties(**{
+                'text-align': 'center',
+                'background-color': 'rgba(230, 247, 255, 0.5)',
+                'color': '#005588',
+                'border': '1px solid rgba(0, 170, 255, 0.2)'
+            })
+            # 表头居中与样式
+            styler.set_table_styles([
+                {'selector': 'th', 'props': [
+                    ('text-align', 'center'), 
+                    ('background-color', '#e6f7ff'), 
+                    ('color', '#0077aa'),
+                    ('font-weight', 'bold')
+                ]}
+            ])
+            # 高亮第一行（最新数据）
+            styler.apply(lambda x: ['background-color: rgba(0, 170, 255, 0.3); font-weight: bold;' if x.name == 0 else '' for _ in x], axis=1)
+            return styler
 
+        # 渲染美化后的表格
+        st.table(apply_sci_fi_style(df_final.style))
+    else:
+        st.write("暂无历史数据")
 
-    # --- 2. 最近 METAR 模块优化 ---
+    st.markdown("---")
     st.markdown("### 📡 最近METAR")
     
-    # 构建科幻风的 HTML 卡片流
-    metar_cards_html = '<div style="display: flex; flex-direction: column; gap: 12px;">'
+    # --- 2. 最近 METAR 模块优化 (修复代码溢出) ---
+    # 确保使用三引号构建长字符串，并严格检查 unsafe_allow_html 参数
+    metar_html_blocks = []
     
-    # 取最近的 5 条记录，并反转顺序让最新的在最上面
-    for row in reversed(data[-5:]):
-        dt_str = pd.to_datetime(row['time']).strftime("%H:%M")
+    # 取最近 5 条
+    recent_metars = data[-5:] if len(data) >= 5 else data
+    for row in reversed(recent_metars):
+        dt_display = pd.to_datetime(row['time']).strftime("%H:%M:%S")
         
-    # 使用自定义 HTML 替代 st.code，实现发光边框和毛玻璃背景
-    metar_cards_html += f"""
-    <div style="background: rgba(255, 255, 255, 0.6); 
-                border: 1px solid rgba(0, 170, 255, 0.2); 
-                border-left: 4px solid #00aaff; 
-                border-radius: 8px; 
-                padding: 12px; 
-                box-shadow: 0 4px 10px rgba(0, 170, 255, 0.08);">
-        
-        <!-- 带有发光指示灯的时间标题 -->
-        <div style="font-size: 12px; color: #00aaff; margin-bottom: 6px; font-weight: bold; letter-spacing: 1px; display: flex; align-items: center;">
-            <span style="display: inline-block; width: 6px; height: 6px; background-color: #00aaff; border-radius: 50%; margin-right: 6px; box-shadow: 0 0 5px #00aaff;"></span>
-            {dt_str} (UTC+8)
+        block = f"""
+        <div style="
+            background: rgba(230, 247, 255, 0.6); 
+            border-left: 5px solid #00aaff; 
+            border-radius: 6px; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            box-shadow: 2px 2px 8px rgba(0, 170, 255, 0.1);
+        ">
+            <div style="color: #0077aa; font-size: 12px; font-weight: bold; margin-bottom: 4px;">
+                ⏱️ {dt_display} (UTC+8)
+            </div>
+            <div style="font-family: 'Courier New', monospace; font-size: 13px; color: #003344; background: rgba(255,255,255,0.4); padding: 5px; border-radius: 4px;">
+                {row['raw']}
+            </div>
         </div>
-        
-        <!-- 等宽字体的报文内容区 -->
-        <div style="font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #003344; line-height: 1.4; word-break: break-word;">
-            {row['raw']}
-        </div>
-    </div>
-    """
-metar_cards_html += '</div>'
+        """
+        metar_html_blocks.append(block)
     
-    # 安全地将这段极具设计感的 HTML 注入到系统中
-    st.markdown(metar_cards_html, unsafe_allow_html=True)
+    # 核心修复点：将所有块组合并使用容器包裹，确保 unsafe_allow_html=True
+    full_metar_html = f'<div style="max-height: 400px; overflow-y: auto;">{"".join(metar_html_blocks)}</div>'
+    st.markdown(full_metar_html, unsafe_allow_html=True)
