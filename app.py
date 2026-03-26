@@ -701,7 +701,7 @@ with col3:
         </div>
         """
         # 关键点：必须使用 unsafe_allow_html=True
-        st.markdown(full_table_html, unsafe_allow_html=True)
+        components.html(full_table_html, height=420, scrolling=True)
     else:
         st.info("⌛ 暂无历史观测数据")
 
