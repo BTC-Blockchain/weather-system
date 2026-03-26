@@ -626,18 +626,16 @@ with col3:
     st.markdown("### 📋 历史数据")
 
     if data:
-        # 1. 准备数据
+        # 1. 准备数据并进行倒序排列
         df_raw = pd.DataFrame(data)
         df_raw["time_dt"] = pd.to_datetime(df_raw["time"])
-        # 倒序排列，确保最新在顶部
         df_raw = df_raw.sort_values(by="time_dt", ascending=False).reset_index(drop=True)
 
-        # 2. 构建 HTML 表格 (包含 CSS 样式)
-        # 注意：在 f-string 中，CSS 的大括号必须写成 {{ }}
+        # 2. 构建 HTML 表格样式 (注意：CSS 大括号必须双写 {{ }})
         table_style = """
         <style>
             .table-container {
-                max-height: 400px; /* 控制显示约10条数据的高度 */
+                max-height: 400px;
                 overflow-y: auto;
                 border: 1px solid rgba(0, 170, 255, 0.3);
                 border-radius: 8px;
@@ -646,9 +644,8 @@ with col3:
             .sci-fi-table {
                 width: 100%;
                 border-collapse: collapse;
-                table-layout: fixed; /* 固定布局防止挤压 */
+                table-layout: fixed;
                 color: #005588;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             }
             .sci-fi-table th {
                 position: sticky;
@@ -674,11 +671,13 @@ with col3:
         </style>
         """
 
-        # 构建表格行内容
+        # 3. 构建表格行
         rows_html = ""
         for i, row in df_raw.iterrows():
+            # 第一行（最新数据）高亮
             row_class = 'class="highlight-row"' if i == 0 else ""
             obs_time = row["time_dt"].strftime("%Y年%m月%d日 %H:%M:%S")
+            
             rows_html += f"""
             <tr {row_class}>
                 <td>{obs_time}</td>
@@ -687,7 +686,7 @@ with col3:
             </tr>
             """
 
-        # 组合完整表格
+        # 4. 渲染完整表格内容
         full_table_html = f"""
         {table_style}
         <div class="table-container">
@@ -710,12 +709,12 @@ with col3:
         st.info("⌛ 暂无历史观测数据")
 
     st.markdown("---")
-    st.markdown("### 📡 最近METAR")
+    st.markdown("### 📡 最近METAR数据源")
     
-    # --- 最近 METAR 模块优化 ---
+    # 5. 构建最近 METAR 模块
     if data:
         metar_blocks = ""
-        # 展示最近10条
+        # 展示最近10条，通过 reversed 确保最新的在最上面
         recent_items = data[-10:] if len(data) >= 10 else data
         for row in reversed(recent_items):
             dt_display = pd.to_datetime(row['time']).strftime("%H:%M:%S")
@@ -735,7 +734,6 @@ with col3:
             </div>
             """
         
-        # 封装进带滚轮的容器
         full_metar_html = f"""
         <div style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
             {metar_blocks}
