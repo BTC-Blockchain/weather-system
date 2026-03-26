@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import json
 import re
+import math
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime, timedelta
 
@@ -59,6 +60,39 @@ h2, h3 {
     background-color: rgba(255,0,80,0.12);
     color: #cc0033;
     border: 1px solid #ff4d6d;
+}
+/* METAR解码模块样式 */
+.metar-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+.metar-item {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 170, 255, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 6px rgba(0, 170, 255, 0.1);
+    transition: transform 0.2s;
+}
+.metar-item:hover {
+    transform: translateY(-2px);
+    border-color: #00aaff;
+}
+.metar-item-title {
+    color: #0077aa;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.metar-item-value {
+    color: #003344;
+    font-size: 14px;
+    font-weight: 600;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -210,7 +244,74 @@ def get_today_data():
         pass
 
     return data, is_new, source
-
+# ======================
+# METAR 解码引擎
+# ======================
+def decode_metar(raw, obs_time):
+    data = {
+        "time": obs_time,
+        "wx": "无显著天气",
+        "wind": "未知",
+        "cloud": "晴空",
+        "vis": "未知",
+        "qnh": "未知",
+        "dew": "未知",
+        "rh": "未知"
+    }
+    
+    # 1. 风速风向 (例如 12004MPS, VRB02KT)
+    wind_match = re.search(r'\b(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?(MPS|KT)\b', raw)
+    if wind_match:
+        dir_str = "变向" if wind_match.group(1) == "VRB" else f"{wind_match.group(1)}°"
+        data["wind"] = f"{dir_str} {wind_match.group(2)}{wind_match.group(4)}"
+        
+    # 2. 能见度 (例如 9999, 0800)
+    vis_match = re.search(r'\b(\d{4})\b', raw)
+    if vis_match:
+        vis = vis_match.group(1)
+        data["vis"] = "> 10 公里" if vis == "9999" else f"{vis} 米"
+        
+    # 3. 云况 (例如 FEW030, BKN040)
+    clouds = re.findall(r'\b(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?\b', raw)
+    if clouds:
+        cloud_map = {"FEW": "少云", "SCT": "疏云", "BKN": "多云", "OVC": "阴天", "VV": "垂直能见度"}
+        # 将飞行高度层(FL)转换为大致的米 (x30)
+        c_list = [f"{cloud_map.get(c[0], c[0])} {int(c[1])*30}m" for c in clouds]
+        data["cloud"] = " / ".join(c_list)
+    elif "CAVOK" in raw:
+        data["cloud"] = "晴空良好 (CAVOK)"
+        data["vis"] = "> 10 公里"
+        
+    # 4. 气压 (例如 Q1018)
+    qnh_match = re.search(r'\bQ(\d{4})\b', raw)
+    if qnh_match:
+        data["qnh"] = f"{qnh_match.group(1)} hPa"
+        
+    # 5. 温度、露点与湿度计算
+    temp_match = re.search(r'\b(M?\d{2})/(M?\d{2})\b', raw)
+    if temp_match:
+        t = int(temp_match.group(1).replace("M", "-"))
+        td = int(temp_match.group(2).replace("M", "-"))
+        data["dew"] = f"{td}°C"
+        
+        # 使用马格努斯公式 (Magnus formula) 计算相对湿度
+        es = 6.112 * math.exp((17.67 * t) / (t + 243.5))
+        e = 6.112 * math.exp((17.67 * td) / (td + 243.5))
+        rh = max(0, min(100, (e / es) * 100))
+        data["rh"] = f"{int(rh)}%"
+        
+    # 6. 天气现象 (常见标识符)
+    wx_map = {"-RA": "小雨", "RA": "中雨", "+RA": "大雨", "SN": "降雪", "DZ": "毛毛雨", 
+              "FG": "大雾", "BR": "轻雾", "HZ": "霾", "TS": "雷暴", "VCTS": "周边雷暴", "SHRA": "阵雨"}
+    wx_list = []
+    for code, name in wx_map.items():
+        # 精确匹配单词边界
+        if re.search(r'\b' + re.escape(code) + r'\b', raw):
+            wx_list.append(name)
+    if wx_list:
+        data["wx"] = ", ".join(wx_list)
+        
+    return data
 # ======================
 # 模型
 # ======================
@@ -345,6 +446,51 @@ with col1:
             st.warning("🟡 接近顶部")
         else:
             st.success("🟢 上升趋势")
+            
+ # === METAR 解码 ===     
+    st.markdown("---")
+    st.markdown("### 🔍 METAR 解码")
+    
+    # 提取并解码最新一条数据
+    decoded = decode_metar(current["raw"], formatted_time)
+    
+    html_content = f"""
+    <div class="metar-grid">
+        <div class="metar-item" style="grid-column: span 2;">
+            <div class="metar-item-title">🕒 观测时间</div>
+            <div class="metar-item-value">{decoded['time']}</div>
+        </div>
+        <div class="metar-item">
+            <div class="metar-item-title">🌬️ 风速风向</div>
+            <div class="metar-item-value">{decoded['wind']}</div>
+        </div>
+        <div class="metar-item">
+            <div class="metar-item-title">👁️ 能见度</div>
+            <div class="metar-item-value">{decoded['vis']}</div>
+        </div>
+        <div class="metar-item">
+            <div class="metar-item-title">☁️ 云况</div>
+            <div class="metar-item-value">{decoded['cloud']}</div>
+        </div>
+        <div class="metar-item">
+            <div class="metar-item-title">⏱️ 气压 (QNH)</div>
+            <div class="metar-item-value">{decoded['qnh']}</div>
+        </div>
+        <div class="metar-item">
+            <div class="metar-item-title">💧 相对湿度</div>
+            <div class="metar-item-value">{decoded['rh']}</div>
+        </div>
+        <div class="metar-item">
+            <div class="metar-item-title">🌡️ 露点</div>
+            <div class="metar-item-value">{decoded['dew']}</div>
+        </div>
+        <div class="metar-item" style="grid-column: span 2; background: rgba(0, 170, 255, 0.05);">
+            <div class="metar-item-title">⛈️ 当前天气</div>
+            <div class="metar-item-value">{decoded['wx']}</div>
+        </div>
+    </div>
+    """
+    st.markdown(html_content, unsafe_allow_html=True)
 
 with col2:
     st.markdown("### 📡 当前数据")
