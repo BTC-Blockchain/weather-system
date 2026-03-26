@@ -245,33 +245,49 @@ def get_today_data():
 
     return data, is_new, source
 # ======================
-# METAR 解码引擎
+# METAR 解码引擎（进阶版：支持单位自动换算）
 # ======================
 def decode_metar(raw, obs_time):
+    # 步骤 1：初始化数据字典（设定安全默认值）
     data = {
         "time": obs_time,
-        "wx": "无显著天气",
-        "wind": "未知",
+        "wx": "无显著天气",  # 默认无复杂天气现象
+        "wind": "数据缺失",  # 将"未知"改为更专业的"数据缺失"
         "cloud": "晴空",
-        "vis": "未知",
-        "qnh": "未知",
-        "dew": "未知",
-        "rh": "未知"
+        "vis": "数据缺失",
+        "qnh": "数据缺失",
+        "dew": "数据缺失",
+        "rh": "数据缺失"
     }
     
-    # 1. 风速风向 (例如 12004MPS, VRB02KT)
+    # 步骤 2：解析风速风向 (支持 MPS 和 KT 两种单位)
+    # 正则解释：匹配 3位数字或VRB(方向) + 2到3位数字(速度) + 可选的G及阵风速度 + MPS或KT(单位)
     wind_match = re.search(r'\b(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?(MPS|KT)\b', raw)
     if wind_match:
+        # 获取风向
         dir_str = "变向" if wind_match.group(1) == "VRB" else f"{wind_match.group(1)}°"
-        data["wind"] = f"{dir_str} {wind_match.group(2)}{wind_match.group(4)}"
+        # 获取风速数值
+        speed_raw = int(wind_match.group(2))
+        # 获取单位
+        unit = wind_match.group(4)
         
-    # 2. 能见度 (例如 9999, 0800)
-    vis_match = re.search(r'\b(\d{4})\b', raw)
+        # 核心逻辑：单位转换
+        if unit == "KT":
+            # 1 节(Knot) = 0.51444 米/秒，保留一位小数
+            speed_mps = round(speed_raw * 0.5144, 1)
+        else:
+            speed_mps = speed_raw # 如果已经是 MPS，则保持不变
+            
+        data["wind"] = f"{dir_str}  {speed_mps} m/s"
+        
+    # 步骤 3：解析能见度 (例如 9999, 0800)
+    # 增加前后空格限制，防止错误匹配到时间戳等其他4位数字
+    vis_match = re.search(r'\s(\d{4})\s', raw + " ") 
     if vis_match:
         vis = vis_match.group(1)
         data["vis"] = "> 10 公里" if vis == "9999" else f"{vis} 米"
         
-    # 3. 云况 (例如 FEW030, BKN040)
+    # 步骤 4：解析云况
     clouds = re.findall(r'\b(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?\b', raw)
     if clouds:
         cloud_map = {"FEW": "少云", "SCT": "疏云", "BKN": "多云", "OVC": "阴天", "VV": "垂直能见度"}
@@ -279,15 +295,16 @@ def decode_metar(raw, obs_time):
         c_list = [f"{cloud_map.get(c[0], c[0])} {int(c[1])*30}m" for c in clouds]
         data["cloud"] = " / ".join(c_list)
     elif "CAVOK" in raw:
+        # CAVOK 代表能见度好、无云、无复杂天气
         data["cloud"] = "晴空良好 (CAVOK)"
         data["vis"] = "> 10 公里"
         
-    # 4. 气压 (例如 Q1018)
+    # 步骤 5：解析气压 (例如 Q1018)
     qnh_match = re.search(r'\bQ(\d{4})\b', raw)
     if qnh_match:
         data["qnh"] = f"{qnh_match.group(1)} hPa"
         
-    # 5. 温度、露点与湿度计算
+    # 步骤 6：解析温度、露点，并计算相对湿度
     temp_match = re.search(r'\b(M?\d{2})/(M?\d{2})\b', raw)
     if temp_match:
         t = int(temp_match.group(1).replace("M", "-"))
@@ -300,14 +317,15 @@ def decode_metar(raw, obs_time):
         rh = max(0, min(100, (e / es) * 100))
         data["rh"] = f"{int(rh)}%"
         
-    # 6. 天气现象 (常见标识符)
+    # 步骤 7：解析特殊天气现象 (扫描常见标识符)
     wx_map = {"-RA": "小雨", "RA": "中雨", "+RA": "大雨", "SN": "降雪", "DZ": "毛毛雨", 
               "FG": "大雾", "BR": "轻雾", "HZ": "霾", "TS": "雷暴", "VCTS": "周边雷暴", "SHRA": "阵雨"}
     wx_list = []
     for code, name in wx_map.items():
-        # 精确匹配单词边界
         if re.search(r'\b' + re.escape(code) + r'\b', raw):
             wx_list.append(name)
+    
+    # 如果找到了匹配的天气现象，就会覆盖掉初始的"无显著天气"
     if wx_list:
         data["wx"] = ", ".join(wx_list)
         
