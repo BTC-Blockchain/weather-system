@@ -626,55 +626,51 @@ with col3:
     st.markdown("### 📋 历史数据")
 
     if data:
-        # 1. 准备数据并进行倒序排列
+        # 1. 准备并排序数据
         df_raw = pd.DataFrame(data)
         df_raw["time_dt"] = pd.to_datetime(df_raw["time"])
         df_raw = df_raw.sort_values(by="time_dt", ascending=False).reset_index(drop=True)
 
-        # 2. 构建 HTML 表格样式 (注意：CSS 大括号必须双写 {{ }})
+        # 2. 定义 CSS 样式 (注意：CSS 的大括号使用了双括号 {{ }} 以适配 f-string)
         table_style = """
         <style>
-            .table-container {
+            .table-container {{
                 max-height: 400px;
                 overflow-y: auto;
                 border: 1px solid rgba(0, 170, 255, 0.3);
                 border-radius: 8px;
                 background-color: rgba(230, 247, 255, 0.1);
-            }
-            .sci-fi-table {
+            }}
+            .sci-fi-table {{
                 width: 100%;
                 border-collapse: collapse;
-                table-layout: fixed;
                 color: #005588;
-            }
-            .sci-fi-table th {
+                font-size: 13px;
+            }}
+            .sci-fi-table th {{
                 position: sticky;
                 top: 0;
                 background-color: #e6f7ff;
-                color: #0077aa;
-                padding: 12px 5px;
-                text-align: center !important;
-                font-weight: bold;
-                z-index: 10;
+                padding: 10px;
                 border-bottom: 2px solid rgba(0, 170, 255, 0.3);
-            }
-            .sci-fi-table td {
-                padding: 10px 5px;
-                text-align: center !important;
+                z-index: 2;
+            }}
+            .sci-fi-table td {{
+                padding: 8px;
+                text-align: center;
                 border-bottom: 1px solid rgba(0, 170, 255, 0.1);
-                word-break: break-all;
-            }
-            .highlight-row {
-                background-color: rgba(0, 170, 255, 0.2) !important;
+            }}
+            .highlight-row {{
+                background-color: rgba(0, 170, 255, 0.15);
                 font-weight: bold;
-            }
+            }}
         </style>
         """
 
-        # 3. 构建表格行
+        # 3. 循环构建表格行 (tr) 内容
         rows_html = ""
         for i, row in df_raw.iterrows():
-            # 第一行（最新数据）高亮
+            # 为第一行添加高亮样式类
             row_class = 'class="highlight-row"' if i == 0 else ""
             obs_time = row["time_dt"].strftime("%Y年%m月%d日 %H:%M:%S")
             
@@ -686,16 +682,16 @@ with col3:
             </tr>
             """
 
-        # 4. 渲染完整表格内容
+        # 4. 组合成完整的 HTML 表格并渲染
         full_table_html = f"""
         {table_style}
         <div class="table-container">
             <table class="sci-fi-table">
                 <thead>
                     <tr>
-                        <th style="width: 45%;">观测时间</th>
-                        <th style="width: 20%;">温度</th>
-                        <th style="width: 35%;">METAR原始时间</th>
+                        <th>观测时间</th>
+                        <th>温度</th>
+                        <th>METAR原始时间</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -704,39 +700,31 @@ with col3:
             </table>
         </div>
         """
+        # 关键点：必须使用 unsafe_allow_html=True
         st.markdown(full_table_html, unsafe_allow_html=True)
     else:
         st.info("⌛ 暂无历史观测数据")
 
     st.markdown("---")
-    st.markdown("### 📡 最近METAR数据源")
+    st.markdown("### 📡 最近METAR")
     
-    # 5. 构建最近 METAR 模块
+    # 最近 METAR 模块的修复
     if data:
         metar_blocks = ""
-        # 展示最近10条，通过 reversed 确保最新的在最上面
         recent_items = data[-10:] if len(data) >= 10 else data
         for row in reversed(recent_items):
             dt_display = pd.to_datetime(row['time']).strftime("%H:%M:%S")
             metar_blocks += f"""
             <div style="background: rgba(230, 247, 255, 0.5); 
                         border-left: 5px solid #00aaff; 
-                        border-radius: 4px; 
                         padding: 10px; 
-                        margin-bottom: 10px; 
-                        text-align: left;">
-                <div style="color: #0077aa; font-size: 11px; font-weight: bold; margin-bottom: 4px;">
-                    <span style="color: #00aaff;">●</span> {dt_display} (UTC+8)
+                        margin-bottom: 8px; 
+                        border-radius: 4px;">
+                <div style="color: #0077aa; font-size: 11px; font-weight: bold;">
+                    ● {dt_display}
                 </div>
-                <div style="font-family: monospace; font-size: 12px; color: #003344; background: rgba(255,255,255,0.3); padding: 5px;">
-                    {row['raw']}
-                </div>
+                <code style="color: #003344; background: transparent;">{row['raw']}</code>
             </div>
             """
         
-        full_metar_html = f"""
-        <div style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
-            {metar_blocks}
-        </div>
-        """
-        st.markdown(full_metar_html, unsafe_allow_html=True)
+        st.markdown(f'<div style="max-height: 400px; overflow-y: auto;">{metar_blocks}</div>', unsafe_allow_html=True)
