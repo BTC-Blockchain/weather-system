@@ -63,6 +63,35 @@ h2, h3 {
     color: #cc0033;
     border: 1px solid #ff4d6d;
 }
+/* 优化卡片容器，增加科技感边框和轻微动画 */
+section[data-testid="stHorizontalBlock"] > div {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 170, 255, 0.3);
+    border-radius: 15px;
+    backdrop-filter: blur(10px); /* 增加毛玻璃效果 */
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 170, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+/* 模拟“扫描”呼吸灯效果 */
+@keyframes border-glow {
+    0% { border-color: rgba(0, 170, 255, 0.3); box-shadow: 0 0 5px rgba(0, 170, 255, 0.1); }
+    50% { border-color: rgba(0, 170, 255, 0.6); box-shadow: 0 0 15px rgba(0, 170, 255, 0.3); }
+    100% { border-color: rgba(0, 170, 255, 0.3); box-shadow: 0 0 5px rgba(0, 170, 255, 0.1); }
+}
+
+section[data-testid="stHorizontalBlock"] > div:hover {
+    animation: border-glow 2s infinite ease-in-out;
+}
+
+/* 针对 Metric 的特殊样式 */
+[data-testid="stMetric"] {
+    background: linear-gradient(to right, rgba(0,170,255,0.05), transparent);
+    padding: 10px;
+    border-radius: 10px;
+}
+
 /* METAR解码模块样式 */
 .metar-grid {
     display: grid;
