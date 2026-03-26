@@ -525,8 +525,8 @@ with col2:
     st.markdown(f"**METAR最新发布：{formatted_time}**")
 
     st.info("📌 当系统启动运行将自动获取当天0点开始的历史数据以填充温度图")
-st.markdown("### 📈 温度曲线")
     
+    st.markdown("### 📈 温度曲线")    
     # 准备数据
     df = pd.DataFrame(data)
     df["time"] = pd.to_datetime(df["time"])
