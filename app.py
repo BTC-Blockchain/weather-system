@@ -659,28 +659,28 @@ with col3:
     for row in reversed(data[-5:]):
         dt_str = pd.to_datetime(row['time']).strftime("%H:%M")
         
-        # 使用自定义 HTML 替代 st.code，实现发光边框和毛玻璃背景
-        metar_cards_html += f"""
-        <div style="background: rgba(255, 255, 255, 0.6); 
-                    border: 1px solid rgba(0, 170, 255, 0.2); 
-                    border-left: 4px solid #00aaff; 
-                    border-radius: 8px; 
-                    padding: 12px; 
-                    box-shadow: 0 4px 10px rgba(0, 170, 255, 0.08);">
-            
-            <!-- 带有发光指示灯的时间标题 -->
-            <div style="font-size: 12px; color: #00aaff; margin-bottom: 6px; font-weight: bold; letter-spacing: 1px; display: flex; align-items: center;">
-                <span style="display: inline-block; width: 6px; height: 6px; background-color: #00aaff; border-radius: 50%; margin-right: 6px; box-shadow: 0 0 5px #00aaff;"></span>
-                {dt_str} (UTC+8)
-            </div>
-            
-            <!-- 等宽字体的报文内容区 -->
-            <div style="font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #003344; line-height: 1.4; word-break: break-word;">
-                {row['raw']}
-            </div>
+    # 使用自定义 HTML 替代 st.code，实现发光边框和毛玻璃背景
+    metar_cards_html += f"""
+    <div style="background: rgba(255, 255, 255, 0.6); 
+                border: 1px solid rgba(0, 170, 255, 0.2); 
+                border-left: 4px solid #00aaff; 
+                border-radius: 8px; 
+                padding: 12px; 
+                box-shadow: 0 4px 10px rgba(0, 170, 255, 0.08);">
+        
+        <!-- 带有发光指示灯的时间标题 -->
+        <div style="font-size: 12px; color: #00aaff; margin-bottom: 6px; font-weight: bold; letter-spacing: 1px; display: flex; align-items: center;">
+            <span style="display: inline-block; width: 6px; height: 6px; background-color: #00aaff; border-radius: 50%; margin-right: 6px; box-shadow: 0 0 5px #00aaff;"></span>
+            {dt_str} (UTC+8)
         </div>
-        """
-    metar_cards_html += '</div>'
+        
+        <!-- 等宽字体的报文内容区 -->
+        <div style="font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #003344; line-height: 1.4; word-break: break-word;">
+            {row['raw']}
+        </div>
+    </div>
+    """
+metar_cards_html += '</div>'
     
     # 安全地将这段极具设计感的 HTML 注入到系统中
     st.markdown(metar_cards_html, unsafe_allow_html=True)
