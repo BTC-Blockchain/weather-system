@@ -2,6 +2,7 @@ import streamlit.components.v1 as components
 import streamlit as st
 import requests
 import pandas as pd
+import plotly.graph_objects as go
 import json
 import re
 import math
@@ -524,10 +525,56 @@ with col2:
     st.markdown(f"**METAR最新发布：{formatted_time}**")
 
     st.info("📌 当系统启动运行将自动获取当天0点开始的历史数据以填充温度图")
-    st.markdown("### 📈 温度曲线")
+st.markdown("### 📈 温度曲线")
+    
+    # 准备数据
     df = pd.DataFrame(data)
     df["time"] = pd.to_datetime(df["time"])
-    st.line_chart(df.set_index("time")["temp"])
+    
+    # 创建 Plotly 科技感图表
+    fig = go.Figure()
+    
+    fig.add_trace(go.Scatter(
+        x=df["time"], 
+        y=df["temp"],
+        mode='lines+markers',
+        name='温度',
+        # 设置线条颜色、粗细和平滑度(spline)
+        line=dict(color='#00aaff', width=3, shape='spline'),
+        # 设置数据点标记的样式
+        marker=dict(size=6, color='#0077aa', symbol='circle', line=dict(color='white', width=1)),
+        # 添加曲线下方的半透明浅蓝填充，增加全息科技感
+        fill='tozeroy',
+        fillcolor='rgba(0, 170, 255, 0.15)',
+        # 自定义悬停提示框格式
+        hovertemplate='时间: %{x|%H:%M}<br>温度: %{y}°C<extra></extra>'
+    ))
+    
+    # 优化布局与背景
+    fig.update_layout(
+        height=350,  # 控制图表高度
+        margin=dict(l=0, r=0, t=10, b=0),  # 消除多余边距
+        plot_bgcolor='rgba(0,0,0,0)',  # 图表背景透明
+        paper_bgcolor='rgba(0,0,0,0)', # 画布背景透明
+        xaxis=dict(
+            showgrid=True, 
+            gridcolor='rgba(0, 170, 255, 0.1)', # 浅蓝色网格线
+            tickformat='%H:%M', # X轴只显示小时:分钟
+            color='#0077aa' # 坐标轴字体颜色
+        ),
+        yaxis=dict(
+            showgrid=True, 
+            gridcolor='rgba(0, 170, 255, 0.1)',
+            title='温度 (°C)',
+            titlefont=dict(color='#0077aa'),
+            color='#0077aa',
+            zeroline=False # 隐藏Y轴0刻度粗线
+        ),
+        hovermode='x unified' # 开启科技感极强的全局悬停参考线
+    )
+    
+    # 使用 Streamlit 渲染图表
+    st.plotly_chart(fig, use_container_width=True)
 
 
     st.markdown("### 🧩 数据完整性")
