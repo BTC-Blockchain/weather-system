@@ -625,18 +625,62 @@ with col2:
 with col3:
     st.markdown("### 📋 历史数据")
 
+    # --- 1. 历史数据表格优化 ---
+    # 数据预处理：提取展示需要的列，并确保最新数据在最上方
     df_table = pd.DataFrame(data)
     df_table["time"] = pd.to_datetime(df_table["time"])
     df_table = df_table.sort_values(by="time", ascending=False).reset_index(drop=True)
+    
+    # 为了展示美观，精简列名并只保留核心数据
+    df_display = pd.DataFrame()
+    df_display["观测时间"] = df_table["time"].dt.strftime("%H:%M")
+    df_display["温度 (°C)"] = df_table["temp"]
 
-    def highlight_latest(row):
+    # 定义科幻感高亮样式函数
+    def style_dataframe(row):
         if row.name == 0:
-            return ['background-color: #d4edda'] * len(row)
-        return [''] * len(row)
+            # 最新一条：浅蓝底色，深蓝色加粗字体，突出实时感
+            return ['background-color: rgba(0, 170, 255, 0.2); color: #005588; font-weight: 900;'] * len(row)
+        # 其他历史数据：极淡的白底透明，普通蓝色文字
+        return ['background-color: rgba(255, 255, 255, 0.4); color: #0077aa;'] * len(row)
 
-    st.write(df_table.style.apply(highlight_latest, axis=1))
+    # 应用样式并使用 Streamlit 渲染（隐藏原本杂乱的索引列）
+    styled_df = df_display.style.apply(style_dataframe, axis=1)
+    st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
+
+    # --- 2. 最近 METAR 模块优化 ---
     st.markdown("### 📡 最近METAR")
+    
+    # 构建科幻风的 HTML 卡片流
+    metar_cards_html = '<div style="display: flex; flex-direction: column; gap: 12px;">'
+    
+    # 取最近的 5 条记录，并反转顺序让最新的在最上面
     for row in reversed(data[-5:]):
-        st.markdown(f"**🕒 {row['time']} (UTC+8)**")
-        st.code(row["raw"])
+        dt_str = pd.to_datetime(row['time']).strftime("%H:%M")
+        
+        # 使用自定义 HTML 替代 st.code，实现发光边框和毛玻璃背景
+        metar_cards_html += f"""
+        <div style="background: rgba(255, 255, 255, 0.6); 
+                    border: 1px solid rgba(0, 170, 255, 0.2); 
+                    border-left: 4px solid #00aaff; 
+                    border-radius: 8px; 
+                    padding: 12px; 
+                    box-shadow: 0 4px 10px rgba(0, 170, 255, 0.08);">
+            
+            <!-- 带有发光指示灯的时间标题 -->
+            <div style="font-size: 12px; color: #00aaff; margin-bottom: 6px; font-weight: bold; letter-spacing: 1px; display: flex; align-items: center;">
+                <span style="display: inline-block; width: 6px; height: 6px; background-color: #00aaff; border-radius: 50%; margin-right: 6px; box-shadow: 0 0 5px #00aaff;"></span>
+                {dt_str} (UTC+8)
+            </div>
+            
+            <!-- 等宽字体的报文内容区 -->
+            <div style="font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #003344; line-height: 1.4; word-break: break-word;">
+                {row['raw']}
+            </div>
+        </div>
+        """
+    metar_cards_html += '</div>'
+    
+    # 安全地将这段极具设计感的 HTML 注入到系统中
+    st.markdown(metar_cards_html, unsafe_allow_html=True)
