@@ -30,22 +30,22 @@ st_autorefresh(interval=30000, key="refresh")
 # 1. 注入全局 CSS，彻底消除顶部间隙
 st.markdown("""
     <style>
-        /* 移除主容器顶部的填充 */
-        .block-container {
-            padding-top: 1rem !important; /* 调整为 0rem 或 1rem */
-            padding-bottom: 0rem !important;
-        }
-        
-        /* 隐藏 Streamlit 顶栏 (Deploy, Settings 等按钮所在区域) */
-        header {
+        /* 1. 顶部 Header 彻底归零 */
+        header[data-testid="stHeader"] {
             visibility: hidden;
             height: 0px;
         }
         
-        /* 移除特定 ID 的间隙（适配不同版本） */
-        [data-testid="stHeader"] {
-            display: none;
+        /* 2. 主容器内边距归零，利用负外边距进一步上提 */
+        .block-container {
+            padding-top: 0rem !important; 
+            padding-bottom: 0rem !important;
+            margin-top: -35px !important; 
         }
+
+        /* 3. 移除 Streamlit 默认的锚点间距 */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -494,12 +494,13 @@ if st.session_state.audio_unlocked and is_new:
     st.toast("🔔 抓取到新 METAR 数据，已触发声音警报！", icon="🔊")
 
 # 数据来源
-if source == "REALTIME":
-    st.success("🟢 数据来源：实时METAR")
-else:
-    st.warning("🟡 数据来源：缓存")
+# 加粗分钟数
+delay_info = f"**{int(delay_min)}** 分钟" 
 
-st.caption(f"⏱ 数据延迟：{int(delay_min)} 分钟")
+if source == "REALTIME":
+    st.success(f"🟢 数据来源：实时METAR (⏱ 截至当前时间，距离上一次获取实时数据已经延迟: {delay_info})")
+else:
+    st.warning(f"🟡 数据来源：缓存 (⏱ 延迟: {delay_info})")
 
 # 🔔 新数据提醒
 if is_new and len(data) >= 2:
