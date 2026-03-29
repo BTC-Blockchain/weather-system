@@ -11,6 +11,9 @@ from streamlit_autorefresh import st_autorefresh
 from datetime import datetime, timedelta
 import streamlit as st
 
+# ======================
+# 标题
+# ======================
 # 1. 极致缩减顶部间隙的全局 CSS 注入
 st.markdown("""
     <style>
@@ -42,12 +45,14 @@ st.markdown("""
 # 2. 标题部分的紧凑实现
 st.markdown("""
     <div style='text-align:center; margin-top: 0px; padding-top: 0px;'>
-        <h1 style='margin: 0px; padding: 0px; color: #00aaff; font-size: 28px;'>
+        <h1 style='margin: 0px; padding: 0px; color: #00aaff; font-size: 32px;'>
             🚀 METAR 智能监控终端
         </h1>
-        <p style='margin: 5px 0; color: #66d9ff; font-size: 14px;'>
+        <p style='margin: 5px 0; color: #00aaff; font-size: 14px;'>
             实时气象 · 概率模型 · 信号系统
         </p>
+    <div style='font-size:14px;color:#888;'>更新时间：{now_local().strftime('%Y-%m-%d %H:%M:%S')}</div>
+    <div style='font-size:14px;color:#666;'>数据来源：METAR(ZSPD) ｜系统每30S自动刷新｜Design by Kylin</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -455,20 +460,6 @@ max_time_str = max_dt.strftime("%H:%M:%S")
 last_dt = pd.to_datetime(current["time"])
 delay_min = (now_local() - last_dt).total_seconds() / 60
 is_delayed = delay_min > 10
-
-# ======================
-# 标题
-# ======================
-st.markdown(f"""
-<div style='text-align:center; padding-top: 0px; margin-top: -20px;'>
-<h1 style='margin-bottom: 0px;'>🚀 METAR 智能监控终端</h1>
-<div style='color:#33d9ff;'>实时气象 · 概率模型 · 信号系统</div>
-<div style='font-size:14px;color:#888;'>更新时间：{now_local().strftime('%Y-%m-%d %H:%M:%S')}</div>
-<div style='font-size:14px;color:#666;'>数据来源：METAR(ZSPD) ｜自动刷新｜Design by Kylin</div>
-</div>
-""", unsafe_allow_html=True)
-
-st.markdown("---")
 
 
 # ======================
