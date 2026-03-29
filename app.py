@@ -725,6 +725,7 @@ with col2:
         </div>
     </div>
     """
+    st.markdown(integrity_html, unsafe_allow_html=True)
     # 2. 动态样式定义
     if not gaps:
         status_color, status_bg, border_c = "#009966", "rgba(0,200,150,0.1)", "#00aa88"
@@ -732,8 +733,7 @@ with col2:
     else:
         status_color, status_bg, border_c = "#cc0033", "rgba(255,0,80,0.1)", "#ff4d6d"
         status_text = f"🔴 检测到 {len(gaps)} 处缺失"
-
-    st.markdown(integrity_html, unsafe_allow_html=True)
+ 
 
 with col3:
     st.markdown("### 📋 历史数据")
