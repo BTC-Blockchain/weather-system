@@ -669,14 +669,14 @@ with col3:
             row_class = 'class="highlight-top-row"' if i == 0 else ""
             obs_time = row["time_dt"].strftime("%Y-%m-%d %H:%M")
             # 注意：采用单行拼接或顶格拼接，彻底避免前面带有空格
-            rows_html += f"<tr {row_class}><td>{obs_time}</td><td>{row['temp']}°C</td><td>{row['time_dt'].strftime("%Y%m%d %H:%M")}</td></tr>\n"
+            rows_html += f"<tr {row_class}><td>{obs_time}</td><td>{row['temp']}°C</td><td>{row['metar_time']}</td></tr>\n"
 
         # 4. 组装并渲染完整的 HTML（外部的 div 和 table 也必须顶格）
         full_html = f"""{table_style}
 <div class="custom-table-wrapper">
 <table class="sci-fi-table">
 <thead>
-<tr><th>观测时间</th><th>温度</th><th>报文时间</th></tr>
+<tr><th>观测时间</th><th>温度</th><th>原始报文时间</th></tr>
 </thead>
 <tbody>
 {rows_html}
@@ -701,7 +701,7 @@ with col3:
             # 将 HTML 写成紧凑格式，防止空格缩进触发代码块
             metar_blocks += f'<div style="background: rgba(0, 170, 255, 0.05); border-left: 4px solid #00aaff; padding: 8px; margin-bottom: 6px; border-radius: 4px; transition: all 0.2s ease;"><span style="color: #0077aa; font-size: 15px; font-weight: bold;">● {dt_display}</span><br><code style="color: #003344; font-size: 11px; background: transparent;">{row["raw"]}</code></div>\n'
             
-        st.markdown(f'<div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">\n{metar_blocks}\n</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="max-height: 450px; overflow-y: auto; padding-right: 5px;">\n{metar_blocks}\n</div>', unsafe_allow_html=True)
 
 
 
