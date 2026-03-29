@@ -647,7 +647,7 @@ with col3:
 .custom-table-wrapper::-webkit-scrollbar-track { background: rgba(230, 247, 255, 0.2); border-radius: 10px; }
 .custom-table-wrapper::-webkit-scrollbar-thumb { background: rgba(0, 170, 255, 0.4); border-radius: 10px; }
 .custom-table-wrapper::-webkit-scrollbar-thumb:hover { background: rgba(0, 170, 255, 0.7); }
-.sci-fi-table { width: 100%; border-collapse: collapse; font-size: 13px; color: #003344; text-align: center; }
+.sci-fi-table { width: 100%; border-collapse: collapse; font-size: 15px; color: #003344; text-align: center; }
 .sci-fi-table thead th {
     position: sticky; top: 0; background: rgba(230, 247, 255, 0.95);
     backdrop-filter: blur(5px); color: #0077aa; padding: 12px 8px;
@@ -719,54 +719,10 @@ with col3:
                         margin-bottom: 6px; 
                         border-radius: 4px;
                         transition: all 0.2s ease;">
-                <span style="color: #0077aa; font-size: 11px; font-weight: bold;">● {dt_display}</span><br>
-                <code style="color: #003344; font-size: 11px; background: transparent;">{row['raw']}</code>
+                <span style="color: #0077aa; font-size: 14px; font-weight: bold;">● {dt_display}</span><br>
+                <code style="color: #003344; font-size: 14px; background: transparent;">{row['raw']}</code>
             </div>
             """
         st.markdown(f'<div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">{metar_blocks}</div>', unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown("### 📡 最近METAR")
-    
-    # 底部最近报文原始数据显示
-    if data:
-        metar_blocks = ""
-        # 获取最近10条，倒序排列
-        recent_items = data[-10:] if len(data) >= 10 else data
-        for row in reversed(recent_items):
-            dt_display = pd.to_datetime(row['time']).strftime("%H:%M:%S")
-            metar_blocks += f"""
-            <div style="background: rgba(0, 170, 255, 0.05); 
-                        border-left: 4px solid #00aaff; 
-                        padding: 8px; 
-                        margin-bottom: 6px; 
-                        border-radius: 4px;">
-                <span style="color: #0077aa; font-size: 10px; font-weight: bold;">{dt_display}</span><br>
-                <code style="color: #003344; font-size: 11px;">{row['raw']}</code>
-            </div>
-            """
-        st.markdown(f'<div style="max-height: 300px; overflow-y: auto;">{metar_blocks}</div>', unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown("### 📡 最近METAR")
-    
-    # 最近 METAR 模块的修复
-    if data:
-        metar_blocks = ""
-        recent_items = data[-10:] if len(data) >= 10 else data
-        for row in reversed(recent_items):
-            dt_display = pd.to_datetime(row['time']).strftime("%H:%M:%S")
-            metar_blocks += f"""
-            <div style="background: rgba(230, 247, 255, 0.5); 
-                        border-left: 5px solid #00aaff; 
-                        padding: 10px; 
-                        margin-bottom: 8px; 
-                        border-radius: 4px;">
-                <div style="color: #0077aa; font-size: 11px; font-weight: bold;">
-                    ● {dt_display}
-                </div>
-                <code style="color: #003344; background: transparent;">{row['raw']}</code>
-            </div>
-            """
-        
-        st.markdown(f'<div style="max-height: 400px; overflow-y: auto;">{metar_blocks}</div>', unsafe_allow_html=True)
