@@ -22,6 +22,13 @@ body, .stApp {
     background: linear-gradient(135deg, #e6f7ff, #f0fbff, #ffffff);
     color: #003344;
 }
+/* 强制缩小 Streamlit 默认的内容区顶部间隙 */
+[data-testid="stAppViewBlockContainer"] {
+    padding-top: 1rem !important;    /* 默认通常是 6rem，改为 1rem 显著缩小间隙 */
+    padding-bottom: 1rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
 
 h1 {
     text-align: center;
@@ -412,7 +419,7 @@ is_delayed = delay_min > 10
 # 标题
 # ======================
 st.markdown(f"""
-<div style='text-align:center; padding:1px;'>
+<div style='text-align:center; padding:1px;margin-top: -20px;'>
 <h1>🚀 METAR 智能监控终端</h1>
 <div style='color:#66d9ff;'>实时气象 · 概率模型 · 信号系统</div>
 <div style='font-size:12px;color:#888;'>更新时间：{now_local().strftime('%Y-%m-%d %H:%M:%S')}</div>
