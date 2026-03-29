@@ -699,30 +699,9 @@ with col3:
         for row in reversed(recent_items):
             dt_display = pd.to_datetime(row['time']).strftime("%H:%M:%S")
             # 将 HTML 写成紧凑格式，防止空格缩进触发代码块
-            metar_blocks += f'<div style="background: rgba(0, 170, 255, 0.05); border-left: 4px solid #00aaff; padding: 8px; margin-bottom: 6px; border-radius: 4px; transition: all 0.2s ease;"><span style="color: #0077aa; font-size: 11px; font-weight: bold;">● {dt_display}</span><br><code style="color: #003344; font-size: 11px; background: transparent;">{row["raw"]}</code></div>\n'
+            metar_blocks += f'<div style="background: rgba(0, 170, 255, 0.05); border-left: 4px solid #00aaff; padding: 8px; margin-bottom: 6px; border-radius: 4px; transition: all 0.2s ease;"><span style="color: #0077aa; font-size: 15px; font-weight: bold;">● {dt_display}</span><br><code style="color: #003344; font-size: 11px; background: transparent;">{row["raw"]}</code></div>\n'
             
         st.markdown(f'<div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">\n{metar_blocks}\n</div>', unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown("### 📡 最近METAR")
-    
-    # 底部最近报文原始数据显示（同样添加滚动控制以防数据过多）
-    if data:
-        metar_blocks = ""
-        recent_items = data[-10:] if len(data) >= 10 else data
-        for row in reversed(recent_items):
-            dt_display = pd.to_datetime(row['time']).strftime("%H:%M:%S")
-            metar_blocks += f"""
-            <div style="background: rgba(0, 170, 255, 0.05); 
-                        border-left: 4px solid #00aaff; 
-                        padding: 8px; 
-                        margin-bottom: 6px; 
-                        border-radius: 4px;
-                        transition: all 0.2s ease;">
-                <span style="color: #0077aa; font-size: 14px; font-weight: bold;">● {dt_display}</span><br>
-                <code style="color: #003344; font-size: 14px; background: transparent;">{row['raw']}</code>
-            </div>
-            """
-        st.markdown(f'<div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">{metar_blocks}</div>', unsafe_allow_html=True)
 
 
