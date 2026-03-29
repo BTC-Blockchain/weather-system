@@ -695,18 +695,62 @@ with col2:
     st.plotly_chart(fig, use_container_width=True)
 
 
-    st.markdown("### 🧩 数据完整性")
+st.markdown("### 🧩 数据完整性")
     gaps = []
     for i in range(1, len(data)):
-        t1 = pd.to_datetime(data[i-1]["time"])
-        t2 = pd.to_datetime(data[i]["time"])
-        if (t2 - t1).total_seconds()/60 > 60:
+        t1 = pd.to_datetime(data[i-1]["time"]) #[cite: 1]
+        t2 = pd.to_datetime(data[i]["time"]) #[cite: 1]
+        if (t2 - t1).total_seconds()/60 > 60: #[cite: 1]
             gaps.append(1)
 
+    # --- 升级版：数据雷达监控卡片 ---
+    total_records = len(data) # 获取当前捕获的总数据量
+    
+    # 根据是否有数据缺失，动态分配颜色和文案
     if not gaps:
-        st.success("数据完整")
+        status_color = "#009966"
+        status_bg = "rgba(0, 200, 150, 0.08)"
+        border_color = "#00aa88"
+        status_text = "🟢 数据链条完整，未检测到断层"
     else:
-        st.error(f"缺失 {len(gaps)} 处")
+        status_color = "#cc0033"
+        status_bg = "rgba(255, 0, 80, 0.08)"
+        border_color = "#ff4d6d"
+        status_text = f"🔴 警告：检测到 {len(gaps)} 处数据缺失"
+
+    # 构建带有固定高度的 HTML 卡片
+    integrity_html = f"""
+    <div style="
+        background: {status_bg};
+        border: 1px solid {border_color};
+        border-radius: 12px;
+        padding: 20px;
+        min-height: 140px; /* 👈 关键点：强制拉高卡片以协调左右布局 */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 4px 15px rgba(0, 170, 255, 0.05);
+        margin-bottom: 10px;
+    ">
+        <div style="font-size: 16px; font-weight: bold; color: {status_color}; text-align: center;">
+            {status_text}
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; border-top: 1px dashed rgba(0,170,255,0.2); padding-top: 15px; margin-top: 15px;">
+            <div>
+                <span style="font-size: 12px; color: #888;">当前捕获样本量</span><br>
+                <span style="font-size: 24px; color: #0077aa; font-weight: 900;">{total_records}</span> 
+                <span style="font-size: 12px; color: #666;">条</span>
+            </div>
+            <div style="text-align: right;">
+                <span style="font-size: 12px; color: #888;">安全防御状态</span><br>
+                <span style="font-size: 15px; color: {status_color}; font-weight: bold;">实时监控中 🛡️</span>
+            </div>
+        </div>
+    </div>
+    """
+    
+    st.markdown(integrity_html, unsafe_allow_html=True)
 
 with col3:
     st.markdown("### 📋 历史数据")
