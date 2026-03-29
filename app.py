@@ -626,59 +626,93 @@ with col3:
     st.markdown("### 📋 历史数据")
 
     if data:
-        # 1. 准备并排序数据
+        # 1. 准备数据并按时间倒序排列（确保最新数据在最顶部）
         df_raw = pd.DataFrame(data)
         df_raw["time_dt"] = pd.to_datetime(df_raw["time"])
         df_raw = df_raw.sort_values(by="time_dt", ascending=False).reset_index(drop=True)
 
-        # 2. 定义 CSS 样式 (注意：CSS 的大括号使用了双括号 {{ }} 以适配 Python 的 f-string)
+        # 2. 浅蓝色科幻风格与滚动条 CSS
         table_style = """
         <style>
-            .table-wrapper {
-                max-height: 400px;
+            /* 外部容器：控制高度和滚动 */
+            .custom-table-wrapper {
+                max-height: 380px; /* 大约容纳10行数据的高度 */
                 overflow-y: auto;
-                border: 1px solid rgba(0, 170, 255, 0.3);
-                border-radius: 8px;
-                background: rgba(255, 255, 255, 0.5);
+                border: 1px solid rgba(0, 170, 255, 0.4);
+                border-radius: 10px;
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(230, 247, 255, 0.4));
+                box-shadow: 0 4px 15px rgba(0, 170, 255, 0.1);
+                margin-bottom: 15px;
             }
+            
+            /* 自定义科技感滚动条 */
+            .custom-table-wrapper::-webkit-scrollbar {
+                width: 6px;
+            }
+            .custom-table-wrapper::-webkit-scrollbar-track {
+                background: rgba(230, 247, 255, 0.2);
+                border-radius: 10px;
+            }
+            .custom-table-wrapper::-webkit-scrollbar-thumb {
+                background: rgba(0, 170, 255, 0.4);
+                border-radius: 10px;
+            }
+            .custom-table-wrapper::-webkit-scrollbar-thumb:hover {
+                background: rgba(0, 170, 255, 0.7);
+            }
+
+            /* 表格基础样式 */
             .sci-fi-table {
                 width: 100%;
                 border-collapse: collapse;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-size: 13px;
                 color: #003344;
+                text-align: center;
             }
-            .sci-fi-table th {
+            
+            /* 粘性吸顶表头 */
+            .sci-fi-table thead th {
                 position: sticky;
                 top: 0;
-                background: #e6f7ff;
+                background: rgba(230, 247, 255, 0.95);
+                backdrop-filter: blur(5px); /* 毛玻璃效果 */
                 color: #0077aa;
-                padding: 10px;
-                font-size: 13px;
+                padding: 12px 8px;
                 border-bottom: 2px solid #00aaff;
-                z-index: 10;
-            }
-            .sci-fi-table td {
-                padding: 8px;
-                text-align: center;
-                border-bottom: 1px solid rgba(0, 170, 255, 0.1);
-                font-size: 12px;
-            }
-            .highlight-row {
-                background-color: rgba(0, 170, 255, 0.1) !important;
+                z-index: 2;
                 font-weight: bold;
-                color: #00aaff;
             }
-            /* 自定义滚动条样式 */
-            .table-wrapper::-webkit-scrollbar { width: 6px; }
-            .table-wrapper::-webkit-scrollbar-thumb { background: rgba(0, 170, 255, 0.3); border-radius: 10px; }
+            
+            /* 单元格与行悬停效果 */
+            .sci-fi-table tbody td {
+                padding: 10px 8px;
+                border-bottom: 1px solid rgba(0, 170, 255, 0.15);
+            }
+            .sci-fi-table tbody tr {
+                transition: background-color 0.2s ease;
+            }
+            .sci-fi-table tbody tr:hover {
+                background-color: rgba(0, 170, 255, 0.1);
+            }
+            
+            /* 🔥 最新一条数据的高亮样式 */
+            .highlight-top-row {
+                background: linear-gradient(90deg, rgba(0, 170, 255, 0.2) 0%, rgba(0, 170, 255, 0.05) 100%) !important;
+                border-left: 4px solid #00aaff;
+                font-weight: bold;
+                color: #005588;
+            }
+            .highlight-top-row td {
+                border-bottom: 1px solid rgba(0, 170, 255, 0.4);
+            }
         </style>
         """
 
-        # 3. 构建表格行内容
+        # 3. 循环构建表格行 HTML
         rows_html = ""
         for i, row in df_raw.iterrows():
-            # 第一行数据高亮显示
-            row_class = 'class="highlight-row"' if i == 0 else ""
+            # 判断是否为第一行（最新数据），注入高亮 CSS 类
+            row_class = 'class="highlight-top-row"' if i == 0 else ""
             obs_time = row["time_dt"].strftime("%Y-%m-%d %H:%M")
             
             rows_html += f"""
@@ -689,10 +723,10 @@ with col3:
             </tr>
             """
 
-        # 4. 组装最终 HTML
+        # 4. 组装并渲染完整的 HTML
         full_html = f"""
         {table_style}
-        <div class="table-wrapper">
+        <div class="custom-table-wrapper">
             <table class="sci-fi-table">
                 <thead>
                     <tr>
@@ -708,11 +742,33 @@ with col3:
         </div>
         """
         
-        # 使用 st.markdown 渲染，必须开启 unsafe_allow_html
+        # 必须开启 unsafe_allow_html 才能正确解析我们手写的 HTML 和 CSS
         st.markdown(full_html, unsafe_allow_html=True)
         
     else:
         st.info("⌛ 暂无历史观测数据")
+
+    st.markdown("---")
+    st.markdown("### 📡 最近METAR")
+    
+    # 底部最近报文原始数据显示（同样添加滚动控制以防数据过多）
+    if data:
+        metar_blocks = ""
+        recent_items = data[-10:] if len(data) >= 10 else data
+        for row in reversed(recent_items):
+            dt_display = pd.to_datetime(row['time']).strftime("%H:%M:%S")
+            metar_blocks += f"""
+            <div style="background: rgba(0, 170, 255, 0.05); 
+                        border-left: 4px solid #00aaff; 
+                        padding: 8px; 
+                        margin-bottom: 6px; 
+                        border-radius: 4px;
+                        transition: all 0.2s ease;">
+                <span style="color: #0077aa; font-size: 11px; font-weight: bold;">● {dt_display}</span><br>
+                <code style="color: #003344; font-size: 11px; background: transparent;">{row['raw']}</code>
+            </div>
+            """
+        st.markdown(f'<div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">{metar_blocks}</div>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("### 📡 最近METAR")
