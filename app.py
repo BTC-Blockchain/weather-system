@@ -717,18 +717,18 @@ with col2:
 
     # 3. 核心 HTML 字符串 (注意：不要在 f-string 内部的样式里使用回车，保持紧凑)
     integrity_html = f"""
-    <div style="background:{status_bg}; border:1px solid {border_c}; border-radius:12px; padding:15px; min-height:220px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 12px rgba(0,170,255,0.1);">
+    <div style="background:{status_bg}; border:1px solid {border_c}; border-radius:12px; padding:15px; min-height:230px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 12px rgba(0,170,255,0.1);">
         <div style="font-size:16px; font-weight:bold; color:{status_color}; text-align:center; margin-bottom:10px;">
             {status_text}
         </div>
         <div style="display:flex; justify-content:space-between; border-top:1px dashed rgba(0,170,255,0.2); padding-top:12px;">
             <div style="text-align:left;">
-                <span style="font-size:12px; color:#888;">捕获样本</span><br>
-                <span style="font-size:22px; color:#0077aa; font-weight:900;">{total_records}</span><span style="font-size:12px; color:#666;"> 条</span>
+                <span style="font-size:40px; color:#888;">捕获样本</span><br>
+                <span style="font-size:60px; color:#0077aa; font-weight:900;">{total_records}</span><span style="font-size:40px; color:#666;"> 条</span>
             </div>
             <div style="text-align:right;">
-                <span style="font-size:12px; color:#888;">防御状态</span><br>
-                <span style="font-size:14px; color:{status_color}; font-weight:bold;">实时监控中 🛡️</span>
+                <span style="font-size:40px; color:#888;">防御状态</span><br>
+                <span style="font-size:60px; color:{status_color}; font-weight:bold;">实时监控中 🛡️</span>
             </div>
         </div>
     </div>
