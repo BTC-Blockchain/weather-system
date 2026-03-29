@@ -494,41 +494,13 @@ if st.session_state.audio_unlocked and is_new:
     st.toast("🔔 抓取到新 METAR 数据，已触发声音警报！", icon="🔊")
 
 # 数据来源
-# ==========================================
-# 🟢 全局样式注入：使 st.success 居中
-# ==========================================
-st.markdown("""
-    <style>
-        /* 定位所有 st.success 组件 */
-        div[data-testid="stNotification"] {
-            text-align: center;
-        }
-        
-        /* 确保内部的 flex 容器也水平居中 */
-        div[data-testid="stNotification"] > div {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        /* 修复图标与文字之间的间距 */
-        div[data-testid="stNotification"] .st-ae {
-            margin-right: 10px;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# ==========================================
-# 渲染组件
-# ==========================================
 delay_info = f"**{int(delay_min)}** 分钟" 
 space = "&nbsp;" * 30
 
 if source == "REALTIME":
-    # 现在这个原生组件会自动应用上方的居中样式
-    st.success(f"🟢 数据来源：实时METAR {space} (⌛ 截至当前时间，距离上一次获取实时数据已经延迟：{delay_info})")
+    st.success(f"🟢 数据来源：实时METAR {space} ⌛⌛截至当前时间，距离上一次获取实时数据已经延迟：{delay_info}")
 else:
-    st.warning(f"🟡 数据来源：缓存 (⏱ 延迟: {delay_info})")
+    st.warning(f"🟡 数据来源：缓存 (🚨🚨注意，缓存数据无意义,联系作者排查数据原因: {delay_info})")
 
 # 🔔 新数据提醒
 if is_new and len(data) >= 2:
