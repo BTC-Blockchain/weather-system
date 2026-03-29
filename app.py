@@ -726,10 +726,10 @@ with col2:
     </div>
     """
     # 2. 动态样式定义
-        if not gaps:
+    if not gaps:
         status_color, status_bg, border_c = "#009966", "rgba(0,200,150,0.1)", "#00aa88"
         status_text = "🟢 数据链条完整"
-        else:
+    else:
         status_color, status_bg, border_c = "#cc0033", "rgba(255,0,80,0.1)", "#ff4d6d"
         status_text = f"🔴 检测到 {len(gaps)} 处缺失"
 
