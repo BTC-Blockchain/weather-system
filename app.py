@@ -615,7 +615,7 @@ with col2:
             }
             .temp-value {
                 font-size: 52px; /* 加大显示 */
-                font-weight: 800; /* 极致加粗 */
+                font-weight: 200; /* 极致加粗 */
                 color: #00aaff;  /* 亮蓝色 */
                 line-height: 1.2;
                 text-shadow: 0px 0px 10px rgba(0, 170, 255, 0.3); /* 轻微发光效果 */
