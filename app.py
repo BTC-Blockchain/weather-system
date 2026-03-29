@@ -716,8 +716,8 @@ with col2:
 
     # 3. 核心 HTML 字符串 (注意：不要在 f-string 内部的样式里使用回车，保持紧凑)
     integrity_html = f"""
-    <div style="background:{status_bg}; border:1px solid {border_c}; border-radius:12px; padding:15px; min-height:240px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 12px rgba(0,170,255,0.1);">
-        <div style="font-size:26px; font-weight:bold; color:{status_color}; text-align:center; margin-bottom:10px;">
+    <div style="background:{status_bg}; border:1px solid {border_c}; border-radius:12px; padding:15px; min-height:220px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 12px rgba(0,170,255,0.1);">
+        <div style="font-size:30px; font-weight:bold; color:{status_color}; text-align:center; margin-bottom:10px;">
             {status_text}
         </div>
         <div style="display:flex; justify-content:space-between; border-top:1px dashed rgba(0,170,255,0.2); padding-top:12px;">
