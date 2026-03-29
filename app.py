@@ -601,39 +601,39 @@ with col2:
 # 1. 定义温度显示样式
 # font-size: 48px 控制数值大小，你可以根据需要调整
 # color: #00aaff 是科幻感蓝色
-temp_style = """
-<style>
-    .temp-container {
-        text-align: left;
-        font-family: 'Inter', sans-serif;
-        margin-bottom: 20px;
-    }
-    .temp-label {
-        font-size: 16px;
-        color: #888;
-        margin-bottom: 4px;
-    }
-    .temp-value {
-        font-size: 52px; /* 加大显示 */
-        font-weight: 800; /* 极致加粗 */
-        color: #00aaff;  /* 亮蓝色 */
-        line-height: 1.2;
-        text-shadow: 0px 0px 10px rgba(0, 170, 255, 0.3); /* 轻微发光效果 */
-    }
-</style>
-"""
-
-# 2. 注入 CSS 样式
-st.markdown(temp_style, unsafe_allow_html=True)
-
-# 3. 渲染自定义的温度模块
-# 使用 f-string 将实时数据嵌入 HTML
-st.markdown(f"""
-    <div class="temp-container">
-        <div class="temp-label">当前温度</div>
-        <div class="temp-value">{current['temp']}°C</div>
-    </div>
-""", unsafe_allow_html=True)
+        temp_style = """
+        <style>
+            .temp-container {
+                text-align: left;
+                font-family: 'Inter', sans-serif;
+                margin-bottom: 20px;
+            }
+            .temp-label {
+                font-size: 16px;
+                color: #888;
+                margin-bottom: 4px;
+            }
+            .temp-value {
+                font-size: 52px; /* 加大显示 */
+                font-weight: 800; /* 极致加粗 */
+                color: #00aaff;  /* 亮蓝色 */
+                line-height: 1.2;
+                text-shadow: 0px 0px 10px rgba(0, 170, 255, 0.3); /* 轻微发光效果 */
+            }
+        </style>
+        """
+        
+        # 2. 注入 CSS 样式
+        st.markdown(temp_style, unsafe_allow_html=True)
+        
+        # 3. 渲染自定义的温度模块
+        # 使用 f-string 将实时数据嵌入 HTML
+        st.markdown(f"""
+            <div class="temp-container">
+                <div class="temp-label">当前温度</div>
+                <div class="temp-value">{current['temp']}°C</div>
+            </div>
+        """, unsafe_allow_html=True)
 
     with col_b:
         st.metric("截至当前已捕获的今日最高温度", f"{max_temp}°C", delta=f"捕获发生在：{max_time_str}")
