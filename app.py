@@ -421,7 +421,7 @@ is_delayed = delay_min > 10
 st.markdown(f"""
 <div style='text-align:center; padding-top: 0px; margin-top: -20px;'>
 <h1 style='margin-bottom: 0px;'>🚀 METAR 智能监控终端</h1>
-<div style='color:#88d9ff;'>实时气象 · 概率模型 · 信号系统</div>
+<div style='color:#33d9ff;'>实时气象 · 概率模型 · 信号系统</div>
 <div style='font-size:14px;color:#888;'>更新时间：{now_local().strftime('%Y-%m-%d %H:%M:%S')}</div>
 <div style='font-size:14px;color:#666;'>数据来源：METAR(ZSPD) ｜自动刷新｜Design by Kylin</div>
 </div>
