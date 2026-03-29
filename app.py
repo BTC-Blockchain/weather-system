@@ -695,17 +695,17 @@ with col2:
     st.plotly_chart(fig, use_container_width=True)
 
 
-st.markdown("### 🧩 数据完整性")
+# 请确保 st.markdown 这一行对齐 with col2 内部的层级
+    st.markdown("### 🧩 数据完整性")
     gaps = []
     for i in range(1, len(data)):
-        t1 = pd.to_datetime(data[i-1]["time"]) #[cite: 1]
-        t2 = pd.to_datetime(data[i]["time"]) #[cite: 1]
-        if (t2 - t1).total_seconds()/60 > 60: #[cite: 1]
+        t1 = pd.to_datetime(data[i-1]["time"])
+        t2 = pd.to_datetime(data[i]["time"])
+        if (t2 - t1).total_seconds()/60 > 60:
             gaps.append(1)
 
     # --- 升级版：数据雷达监控卡片 ---
     total_records = len(data) # 获取当前捕获的总数据量
-    
     # 根据是否有数据缺失，动态分配颜色和文案
     if not gaps:
         status_color = "#009966"
@@ -725,7 +725,7 @@ st.markdown("### 🧩 数据完整性")
         border: 1px solid {border_color};
         border-radius: 12px;
         padding: 20px;
-        min-height: 140px; /* 👈 关键点：强制拉高卡片以协调左右布局 */
+        min-height: 140px; # 关键点：强制拉高卡片以协调左右布局
         display: flex;
         flex-direction: column;
         justify-content: space-between;
