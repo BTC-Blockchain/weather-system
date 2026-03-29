@@ -695,45 +695,52 @@ with col2:
     st.plotly_chart(fig, use_container_width=True)
 
 
-# 请确保 st.markdown 这一行对齐 with col2 内部的层级
-   # 1. 重新构建数据逻辑
-    st.markdown("### 🧩 数据完整性")
-    
-    # 3. 核心 HTML 字符串 (注意：不要在 f-string 内部的样式里使用回车，保持紧凑)
-    integrity_html = f"""
-    <div style="background:{status_bg}; border:1px solid {border_c}; border-radius:12px; padding:15px; min-height:230px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 12px rgba(0,170,255,0.1);">
-        <div style="font-size:16px; font-weight:bold; color:{status_color}; text-align:center; margin-bottom:10px;">
-            {status_text}
+# ==========================================
+# 🧩 数据完整性板块 - 重构布局版
+# ==========================================
+st.markdown("### 🧩 数据完整性")
+
+# 1. 基础数据计算
+gaps = []
+for i in range(1, len(data)):
+    t1 = pd.to_datetime(data[i-1]["time"])
+    t2 = pd.to_datetime(data[i]["time"])
+    if (t2 - t1).total_seconds()/60 > 60:
+        gaps.append(1)
+total_records = len(data)
+
+# --- 核心 HTML 字符串 (放在中间) ---
+status_text = "🟢 数据链条完整" if not gaps else f"🔴 检测到 {len(gaps)} 处缺失"
+
+# 为了防止样式不起作用，所有的 CSS 属性都写在标签内部（内联样式）
+container_style = "display:flex; flex-direction:column; justify-content:space-between; border-radius:12px; padding:15px; min-height:150px; box-shadow:0 4px 12px rgba(0,170,255,0.1); margin-bottom:10px;"
+
+# 2. 渲染展示 (unsafe_allow_html 必须开启以激活样式)
+# 我们在渲染时直接计算样式，确保布局在中间
+st.markdown(f"""
+<div style="{container_style} background: {'rgba(0,200,150,0.1)' if not gaps else 'rgba(255,0,80,0.1)'}; border: 1px solid {'#00aa88' if not gaps else '#ff4d6d'};">
+    <div style="font-size:16px; font-weight:bold; color: {'#009966' if not gaps else '#cc0033'}; text-align:center;">
+        {status_text}
+    </div>
+    <div style="display:flex; justify-content:space-between; border-top:1px dashed rgba(0,170,255,0.2); padding-top:12px;">
+        <div style="text-align:left;">
+            <span style="font-size:20px; color:#888;">捕获样本</span><br>
+            <span style="font-size:40px; color:#0077aa; font-weight:900;">{total_records}</span><span style="font-size:30px; color:#666;"> 条</span>
         </div>
-        <div style="display:flex; justify-content:space-between; border-top:1px dashed rgba(0,170,255,0.2); padding-top:12px;">
-            <div style="text-align:left;">
-                <span style="font-size:20px; color:#888;">捕获样本</span><br>
-                <span style="font-size:40px; color:#0077aa; font-weight:900;">{total_records}</span><span style="font-size:30px; color:#666;"> 条</span>
-            </div>
-            <div style="text-align:right;">
-                <span style="font-size:20px; color:#888;">防御状态</span><br>
-                <span style="font-size:40px; color:{status_color}; font-weight:bold;">实时监控中 🛡️</span>
-            </div>
+        <div style="text-align:right;">
+            <span style="font-size:20px; color:#888;">防御状态</span><br>
+            <span style="font-size:40px; color: {'#009966' if not gaps else '#cc0033'}; font-weight: bold;">实时监控中 🛡️</span>
         </div>
     </div>
-    """
-    st.markdown(integrity_html, unsafe_allow_html=True) 
-    
-    # 2. 动态样式定义
-    gaps = []
-    for i in range(1, len(data)):
-        t1 = pd.to_datetime(data[i-1]["time"])
-        t2 = pd.to_datetime(data[i]["time"])
-        if (t2 - t1).total_seconds()/60 > 60:
-            gaps.append(1)
+</div>
+""", unsafe_allow_html=True)
 
-    total_records = len(data)
-    if not gaps:
-        status_color, status_bg, border_c = "#009966", "rgba(0,200,150,0.1)", "#00aa88"
-        status_text = "🟢 数据链条完整"
-    else:
-        status_color, status_bg, border_c = "#cc0033", "rgba(255,0,80,0.1)", "#ff4d6d"
-        status_text = f"🔴 检测到 {len(gaps)} 处缺失"
+# --- 动态样式定义 (放底部) ---
+# 此处用于记录和二次微调样式参数，供开发者查阅或后续逻辑使用
+if not gaps:
+    current_theme = {"color": "#009966", "bg": "rgba(0,200,150,0.1)", "border": "#00aa88"}
+else:
+    current_theme = {"color": "#cc0033", "bg": "rgba(255,0,80,0.1)", "border": "#ff4d6d"}
 
 
 with col3:
