@@ -9,6 +9,47 @@ import re
 import math
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime, timedelta
+import streamlit as st
+
+# 1. 极致缩减顶部间隙的全局 CSS 注入
+st.markdown("""
+    <style>
+        /* 1. 彻底隐藏 Streamlit 的顶部装饰横条和 Header */
+        header {
+            visibility: hidden;
+            height: 0px;
+        }
+
+        /* 2. 移除主内容区域的顶部填充 (极其关键) */
+        .main .block-container {
+            padding-top: 0rem !important;
+            padding-bottom: 0rem !important;
+            margin-top: -30px !important; /* 强制整体上移 */
+        }
+
+        /* 3. 针对不同版本的特定 ID 选择器进行覆盖 */
+        [data-testid="stHeader"] {
+            display: none;
+        }
+        
+        /* 4. 修复由于隐藏 Header 导致的锚点偏移（可选） */
+        #root > div:nth-child(1) > div > div > div > div > section > div {
+            padding-top: 0rem !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# 2. 标题部分的紧凑实现
+st.markdown("""
+    <div style='text-align:center; margin-top: 0px; padding-top: 0px;'>
+        <h1 style='margin: 0px; padding: 0px; color: #00aaff; font-size: 28px;'>
+            🚀 METAR 智能监控终端
+        </h1>
+        <p style='margin: 5px 0; color: #66d9ff; font-size: 14px;'>
+            实时气象 · 概率模型 · 信号系统
+        </p>
+    </div>
+""", unsafe_allow_html=True)
 
 st.set_page_config(page_title="METAR监控系统", layout="wide")
 st_autorefresh(interval=30000, key="refresh")
