@@ -7,18 +7,26 @@ import plotly.express as px
 import json
 import re
 import math
-from streamlit_autorefresh import st_autorefresh
 from datetime import datetime, timedelta
+from streamlit_autorefresh import st_autorefresh
+
+# =========================================================
+# 1. 页面基础配置 (必须作为第一个 Streamlit 命令执行)
+# =========================================================
+st.set_page_config(page_title="METAR监控系统", layout="wide")
+
+# =========================================================
+# 2. 功能函数定义
+# =========================================================
 def now_local():
     """获取北京时间 (UTC+8)"""
-    # 无论服务器在哪个时区，都强制转换为东八区
     return datetime.utcnow() + timedelta(hours=8)
 
-# ======================
-# 标题
-# ======================
-import streamlit as st
-
+# =========================================================
+# 3. 自动刷新与 CSS 注入 (极致紧凑布局)
+# =========================================================
+st_autorefresh(interval=30000, key="refresh")
+# 标题自定义
 # 1. 注入全局 CSS，彻底消除顶部间隙
 st.markdown("""
     <style>
@@ -59,9 +67,6 @@ st.markdown(f"""
         </p>
     </div>
 """, unsafe_allow_html=True)
-
-st.set_page_config(page_title="METAR监控系统", layout="wide")
-st_autorefresh(interval=30000, key="refresh")
 
 # ======================
 # 🌌 科幻UI样式（优化为浅色）
