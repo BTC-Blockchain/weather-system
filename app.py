@@ -14,48 +14,47 @@ import streamlit as st
 # ======================
 # 标题
 # ======================
-# 1. 极致缩减顶部间隙的全局 CSS 注入
+import streamlit as st
+
+# 1. 注入全局 CSS，彻底消除顶部间隙
 st.markdown("""
     <style>
-        /* 1. 彻底隐藏 Streamlit 的顶部装饰横条和 Header */
+        /* 移除主容器顶部的填充 */
+        .block-container {
+            padding-top: 1rem !important; /* 调整为 0rem 或 1rem */
+            padding-bottom: 0rem !important;
+        }
+        
+        /* 隐藏 Streamlit 顶栏 (Deploy, Settings 等按钮所在区域) */
         header {
             visibility: hidden;
             height: 0px;
         }
-
-        /* 2. 移除主内容区域的顶部填充 (极其关键) */
-        .main .block-container {
-            padding-top: 0rem !important;
-            padding-bottom: 0rem !important;
-            margin-top: -30px !important; /* 强制整体上移 */
-        }
-
-        /* 3. 针对不同版本的特定 ID 选择器进行覆盖 */
+        
+        /* 移除特定 ID 的间隙（适配不同版本） */
         [data-testid="stHeader"] {
             display: none;
-        }
-        
-        /* 4. 修复由于隐藏 Header 导致的锚点偏移（可选） */
-        #root > div:nth-child(1) > div > div > div > div > section > div {
-            padding-top: 0rem !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# 2. 标题部分的紧凑实现
-st.markdown("""
-    <div style='text-align:center; margin-top: 0px; padding-top: 0px;'>
+# 2. 修复并优化后的标题 HTML 模块
+# 增加了 margin-top: -20px 来抵消最后一点无法消除的物理间隙
+st.markdown(f"""
+    <div style='text-align:center; margin-top: -20px; padding-top: 0px;'>
         <h1 style='margin: 0px; padding: 0px; color: #00aaff; font-size: 34px;'>
             🚀 METAR 智能监控终端
         </h1>
-        <p style='margin: 5px 0; color: #00aaff; font-size: 16px;font-weight: bold;'>
+        <p style='margin: 5px 0; color: #00aaff; font-size: 16px; font-weight: bold;'>
             实时气象 · 概率模型 · 信号系统
         </p>
-        <p style='font-size:14px;color:#888;font-weight: bold;'>更新时间：{now_local().strftime('%Y-%m-%d %H:%M:%S')}>
+        <p style='margin: 2px 0; font-size: 14px; color: #888; font-weight: bold;'>
+            更新时间：{now_local().strftime('%Y-%m-%d %H:%M:%S')}
         </p>
-        <p style='font-size:14px;color:#666;font-weight: bold;'>数据来源：METAR(ZSPD) ｜系统每30S自动刷新｜Design by Kylin>
+        <p style='margin: 2px 0; font-size: 14px; color: #666; font-weight: bold;'>
+            数据来源：METAR(ZSPD) ｜ 系统每30S自动刷新 ｜ Design by Kylin
         </p>
-
+    </div>
 """, unsafe_allow_html=True)
 
 st.set_page_config(page_title="METAR监控系统", layout="wide")
