@@ -597,7 +597,7 @@ with col2:
     col_a, col_b = st.columns(2)
 
     with col_a:
-        st.metric("当前温度 \n", f"{current['temp']}°C")
+        st.metric("当前温度", f"\n {current['temp']}°C")
 
     with col_b:
         st.metric("截至当前已捕获的今日最高温度", f"{max_temp}°C", delta=f"捕获发生在：{max_time_str}")
