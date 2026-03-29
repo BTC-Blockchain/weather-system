@@ -707,14 +707,6 @@ with col2:
 
     total_records = len(data)
     
-    # 2. 动态样式定义
-    if not gaps:
-        status_color, status_bg, border_c = "#009966", "rgba(0,200,150,0.1)", "#00aa88"
-        status_text = "🟢 数据链条完整"
-    else:
-        status_color, status_bg, border_c = "#cc0033", "rgba(255,0,80,0.1)", "#ff4d6d"
-        status_text = f"🔴 检测到 {len(gaps)} 处缺失"
-
     # 3. 核心 HTML 字符串 (注意：不要在 f-string 内部的样式里使用回车，保持紧凑)
     integrity_html = f"""
     <div style="background:{status_bg}; border:1px solid {border_c}; border-radius:12px; padding:15px; min-height:230px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 12px rgba(0,170,255,0.1);">
@@ -733,6 +725,13 @@ with col2:
         </div>
     </div>
     """
+    # 2. 动态样式定义
+        if not gaps:
+        status_color, status_bg, border_c = "#009966", "rgba(0,200,150,0.1)", "#00aa88"
+        status_text = "🟢 数据链条完整"
+        else:
+        status_color, status_bg, border_c = "#cc0033", "rgba(255,0,80,0.1)", "#ff4d6d"
+        status_text = f"🔴 检测到 {len(gaps)} 处缺失"
 
     st.markdown(integrity_html, unsafe_allow_html=True)
 
