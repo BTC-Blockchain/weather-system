@@ -723,12 +723,12 @@ with col2:
         </div>
         <div style="display:flex; justify-content:space-between; border-top:1px dashed rgba(0,170,255,0.2); padding-top:12px;">
             <div style="text-align:left;">
-                <span style="font-size:40px; color:#888;">捕获样本</span><br>
-                <span style="font-size:60px; color:#0077aa; font-weight:900;">{total_records}</span><span style="font-size:40px; color:#666;"> 条</span>
+                <span style="font-size:20px; color:#888;">捕获样本</span><br>
+                <span style="font-size:40px; color:#0077aa; font-weight:900;">{total_records}</span><span style="font-size:30px; color:#666;"> 条</span>
             </div>
             <div style="text-align:right;">
-                <span style="font-size:40px; color:#888;">防御状态</span><br>
-                <span style="font-size:60px; color:{status_color}; font-weight:bold;">实时监控中 🛡️</span>
+                <span style="font-size:20px; color:#888;">防御状态</span><br>
+                <span style="font-size:40px; color:{status_color}; font-weight:bold;">实时监控中 🛡️</span>
             </div>
         </div>
     </div>
