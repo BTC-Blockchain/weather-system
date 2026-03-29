@@ -698,14 +698,6 @@ with col2:
 # 请确保 st.markdown 这一行对齐 with col2 内部的层级
    # 1. 重新构建数据逻辑
     st.markdown("### 🧩 数据完整性")
-    gaps = []
-    for i in range(1, len(data)):
-        t1 = pd.to_datetime(data[i-1]["time"])
-        t2 = pd.to_datetime(data[i]["time"])
-        if (t2 - t1).total_seconds()/60 > 60:
-            gaps.append(1)
-
-    total_records = len(data)
     
     # 3. 核心 HTML 字符串 (注意：不要在 f-string 内部的样式里使用回车，保持紧凑)
     integrity_html = f"""
@@ -725,15 +717,22 @@ with col2:
         </div>
     </div>
     """
-    st.markdown(integrity_html, unsafe_allow_html=True)
     # 2. 动态样式定义
+    gaps = []
+    for i in range(1, len(data)):
+        t1 = pd.to_datetime(data[i-1]["time"])
+        t2 = pd.to_datetime(data[i]["time"])
+        if (t2 - t1).total_seconds()/60 > 60:
+            gaps.append(1)
+
+    total_records = len(data)
     if not gaps:
         status_color, status_bg, border_c = "#009966", "rgba(0,200,150,0.1)", "#00aa88"
         status_text = "🟢 数据链条完整"
     else:
         status_color, status_bg, border_c = "#cc0033", "rgba(255,0,80,0.1)", "#ff4d6d"
         status_text = f"🔴 检测到 {len(gaps)} 处缺失"
- 
+    st.markdown(integrity_html, unsafe_allow_html=True) 
 
 with col3:
     st.markdown("### 📋 历史数据")
