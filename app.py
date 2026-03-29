@@ -9,7 +9,10 @@ import re
 import math
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime, timedelta
-import streamlit as st
+def now_local():
+    """获取北京时间 (UTC+8)"""
+    # 无论服务器在哪个时区，都强制转换为东八区
+    return datetime.utcnow() + timedelta(hours=8)
 
 # ======================
 # 标题
