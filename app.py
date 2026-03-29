@@ -412,7 +412,7 @@ is_delayed = delay_min > 10
 # 标题
 # ======================
 st.markdown(f"""
-<div style='text-align:center; padding:10px;'>
+<div style='text-align:center; padding:1px;'>
 <h1>🚀 METAR 智能监控终端</h1>
 <div style='color:#66d9ff;'>实时气象 · 概率模型 · 信号系统</div>
 <div style='font-size:12px;color:#888;'>更新时间：{now_local().strftime('%Y-%m-%d %H:%M:%S')}</div>
