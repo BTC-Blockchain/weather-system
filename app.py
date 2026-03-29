@@ -631,48 +631,55 @@ with col3:
         df_raw["time_dt"] = pd.to_datetime(df_raw["time"])
         df_raw = df_raw.sort_values(by="time_dt", ascending=False).reset_index(drop=True)
 
-        # 2. 定义 CSS 样式 (注意：CSS 的大括号使用了双括号 {{ }} 以适配 f-string)
+        # 2. 定义 CSS 样式 (注意：CSS 的大括号使用了双括号 {{ }} 以适配 Python 的 f-string)
         table_style = """
         <style>
-            .table-container {{
+            .table-wrapper {
                 max-height: 400px;
                 overflow-y: auto;
                 border: 1px solid rgba(0, 170, 255, 0.3);
                 border-radius: 8px;
-                background-color: rgba(230, 247, 255, 0.1);
-            }}
-            .sci-fi-table {{
+                background: rgba(255, 255, 255, 0.5);
+            }
+            .sci-fi-table {
                 width: 100%;
                 border-collapse: collapse;
-                color: #005588;
-                font-size: 13px;
-            }}
-            .sci-fi-table th {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                color: #003344;
+            }
+            .sci-fi-table th {
                 position: sticky;
                 top: 0;
-                background-color: #e6f7ff;
+                background: #e6f7ff;
+                color: #0077aa;
                 padding: 10px;
-                border-bottom: 2px solid rgba(0, 170, 255, 0.3);
-                z-index: 2;
-            }}
-            .sci-fi-table td {{
+                font-size: 13px;
+                border-bottom: 2px solid #00aaff;
+                z-index: 10;
+            }
+            .sci-fi-table td {
                 padding: 8px;
                 text-align: center;
                 border-bottom: 1px solid rgba(0, 170, 255, 0.1);
-            }}
-            .highlight-row {{
-                background-color: rgba(0, 170, 255, 0.15);
+                font-size: 12px;
+            }
+            .highlight-row {
+                background-color: rgba(0, 170, 255, 0.1) !important;
                 font-weight: bold;
-            }}
+                color: #00aaff;
+            }
+            /* 自定义滚动条样式 */
+            .table-wrapper::-webkit-scrollbar { width: 6px; }
+            .table-wrapper::-webkit-scrollbar-thumb { background: rgba(0, 170, 255, 0.3); border-radius: 10px; }
         </style>
         """
 
-        # 3. 循环构建表格行 (tr) 内容
+        # 3. 构建表格行内容
         rows_html = ""
         for i, row in df_raw.iterrows():
-            # 为第一行添加高亮样式类
+            # 第一行数据高亮显示
             row_class = 'class="highlight-row"' if i == 0 else ""
-            obs_time = row["time_dt"].strftime("%Y年%m月%d日 %H:%M:%S")
+            obs_time = row["time_dt"].strftime("%Y-%m-%d %H:%M")
             
             rows_html += f"""
             <tr {row_class}>
@@ -682,16 +689,16 @@ with col3:
             </tr>
             """
 
-        # 4. 组合成完整的 HTML 表格并渲染
-        full_table_html = f"""
+        # 4. 组装最终 HTML
+        full_html = f"""
         {table_style}
-        <div class="table-container">
+        <div class="table-wrapper">
             <table class="sci-fi-table">
                 <thead>
                     <tr>
                         <th>观测时间</th>
                         <th>温度</th>
-                        <th>METAR原始时间</th>
+                        <th>报文时间</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -700,10 +707,34 @@ with col3:
             </table>
         </div>
         """
-        # 关键点：必须使用 unsafe_allow_html=True
-        components.html(full_table_html, height=420, scrolling=True)
+        
+        # 使用 st.markdown 渲染，必须开启 unsafe_allow_html
+        st.markdown(full_html, unsafe_allow_html=True)
+        
     else:
         st.info("⌛ 暂无历史观测数据")
+
+    st.markdown("---")
+    st.markdown("### 📡 最近METAR")
+    
+    # 底部最近报文原始数据显示
+    if data:
+        metar_blocks = ""
+        # 获取最近10条，倒序排列
+        recent_items = data[-10:] if len(data) >= 10 else data
+        for row in reversed(recent_items):
+            dt_display = pd.to_datetime(row['time']).strftime("%H:%M:%S")
+            metar_blocks += f"""
+            <div style="background: rgba(0, 170, 255, 0.05); 
+                        border-left: 4px solid #00aaff; 
+                        padding: 8px; 
+                        margin-bottom: 6px; 
+                        border-radius: 4px;">
+                <span style="color: #0077aa; font-size: 10px; font-weight: bold;">{dt_display}</span><br>
+                <code style="color: #003344; font-size: 11px;">{row['raw']}</code>
+            </div>
+            """
+        st.markdown(f'<div style="max-height: 300px; overflow-y: auto;">{metar_blocks}</div>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("### 📡 最近METAR")
