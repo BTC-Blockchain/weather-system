@@ -626,127 +626,82 @@ with col3:
     st.markdown("### 📋 历史数据")
 
     if data:
-        # 1. 准备数据并按时间倒序排列（确保最新数据在最顶部）
+        # 1. 准备数据并按时间倒序排列
         df_raw = pd.DataFrame(data)
         df_raw["time_dt"] = pd.to_datetime(df_raw["time"])
         df_raw = df_raw.sort_values(by="time_dt", ascending=False).reset_index(drop=True)
 
         # 2. 浅蓝色科幻风格与滚动条 CSS
-        table_style = """
-        <style>
-            /* 外部容器：控制高度和滚动 */
-            .custom-table-wrapper {
-                max-height: 380px; /* 大约容纳10行数据的高度 */
-                overflow-y: auto;
-                border: 1px solid rgba(0, 170, 255, 0.4);
-                border-radius: 10px;
-                background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(230, 247, 255, 0.4));
-                box-shadow: 0 4px 15px rgba(0, 170, 255, 0.1);
-                margin-bottom: 15px;
-            }
-            
-            /* 自定义科技感滚动条 */
-            .custom-table-wrapper::-webkit-scrollbar {
-                width: 6px;
-            }
-            .custom-table-wrapper::-webkit-scrollbar-track {
-                background: rgba(230, 247, 255, 0.2);
-                border-radius: 10px;
-            }
-            .custom-table-wrapper::-webkit-scrollbar-thumb {
-                background: rgba(0, 170, 255, 0.4);
-                border-radius: 10px;
-            }
-            .custom-table-wrapper::-webkit-scrollbar-thumb:hover {
-                background: rgba(0, 170, 255, 0.7);
-            }
-
-            /* 表格基础样式 */
-            .sci-fi-table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 13px;
-                color: #003344;
-                text-align: center;
-            }
-            
-            /* 粘性吸顶表头 */
-            .sci-fi-table thead th {
-                position: sticky;
-                top: 0;
-                background: rgba(230, 247, 255, 0.95);
-                backdrop-filter: blur(5px); /* 毛玻璃效果 */
-                color: #0077aa;
-                padding: 12px 8px;
-                border-bottom: 2px solid #00aaff;
-                z-index: 2;
-                font-weight: bold;
-            }
-            
-            /* 单元格与行悬停效果 */
-            .sci-fi-table tbody td {
-                padding: 10px 8px;
-                border-bottom: 1px solid rgba(0, 170, 255, 0.15);
-            }
-            .sci-fi-table tbody tr {
-                transition: background-color 0.2s ease;
-            }
-            .sci-fi-table tbody tr:hover {
-                background-color: rgba(0, 170, 255, 0.1);
-            }
-            
-            /* 🔥 最新一条数据的高亮样式 */
-            .highlight-top-row {
-                background: linear-gradient(90deg, rgba(0, 170, 255, 0.2) 0%, rgba(0, 170, 255, 0.05) 100%) !important;
-                border-left: 4px solid #00aaff;
-                font-weight: bold;
-                color: #005588;
-            }
-            .highlight-top-row td {
-                border-bottom: 1px solid rgba(0, 170, 255, 0.4);
-            }
-        </style>
-        """
+        # 注意：这里将 <style> 标签顶格写，防止被 Markdown 当作代码块
+        table_style = """<style>
+.custom-table-wrapper {
+    max-height: 380px;
+    overflow-y: auto;
+    border: 1px solid rgba(0, 170, 255, 0.4);
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(230, 247, 255, 0.4));
+    box-shadow: 0 4px 15px rgba(0, 170, 255, 0.1);
+    margin-bottom: 15px;
+}
+.custom-table-wrapper::-webkit-scrollbar { width: 6px; }
+.custom-table-wrapper::-webkit-scrollbar-track { background: rgba(230, 247, 255, 0.2); border-radius: 10px; }
+.custom-table-wrapper::-webkit-scrollbar-thumb { background: rgba(0, 170, 255, 0.4); border-radius: 10px; }
+.custom-table-wrapper::-webkit-scrollbar-thumb:hover { background: rgba(0, 170, 255, 0.7); }
+.sci-fi-table { width: 100%; border-collapse: collapse; font-size: 13px; color: #003344; text-align: center; }
+.sci-fi-table thead th {
+    position: sticky; top: 0; background: rgba(230, 247, 255, 0.95);
+    backdrop-filter: blur(5px); color: #0077aa; padding: 12px 8px;
+    border-bottom: 2px solid #00aaff; z-index: 2; font-weight: bold;
+}
+.sci-fi-table tbody td { padding: 10px 8px; border-bottom: 1px solid rgba(0, 170, 255, 0.15); }
+.sci-fi-table tbody tr { transition: background-color 0.2s ease; }
+.sci-fi-table tbody tr:hover { background-color: rgba(0, 170, 255, 0.1); }
+.highlight-top-row {
+    background: linear-gradient(90deg, rgba(0, 170, 255, 0.2) 0%, rgba(0, 170, 255, 0.05) 100%) !important;
+    border-left: 4px solid #00aaff; font-weight: bold; color: #005588;
+}
+.highlight-top-row td { border-bottom: 1px solid rgba(0, 170, 255, 0.4); }
+</style>"""
 
         # 3. 循环构建表格行 HTML
         rows_html = ""
         for i, row in df_raw.iterrows():
-            # 判断是否为第一行（最新数据），注入高亮 CSS 类
             row_class = 'class="highlight-top-row"' if i == 0 else ""
             obs_time = row["time_dt"].strftime("%Y-%m-%d %H:%M")
-            
-            rows_html += f"""
-            <tr {row_class}>
-                <td>{obs_time}</td>
-                <td>{row['temp']}°C</td>
-                <td>{row['metar_time']}</td>
-            </tr>
-            """
+            # 注意：采用单行拼接或顶格拼接，彻底避免前面带有空格
+            rows_html += f"<tr {row_class}><td>{obs_time}</td><td>{row['temp']}°C</td><td>{row['metar_time']}</td></tr>\n"
 
-        # 4. 组装并渲染完整的 HTML
-        full_html = f"""
-        {table_style}
-        <div class="custom-table-wrapper">
-            <table class="sci-fi-table">
-                <thead>
-                    <tr>
-                        <th>观测时间</th>
-                        <th>温度</th>
-                        <th>报文时间</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows_html}
-                </tbody>
-            </table>
-        </div>
-        """
+        # 4. 组装并渲染完整的 HTML（外部的 div 和 table 也必须顶格）
+        full_html = f"""{table_style}
+<div class="custom-table-wrapper">
+<table class="sci-fi-table">
+<thead>
+<tr><th>观测时间</th><th>温度</th><th>报文时间</th></tr>
+</thead>
+<tbody>
+{rows_html}
+</tbody>
+</table>
+</div>"""
         
-        # 必须开启 unsafe_allow_html 才能正确解析我们手写的 HTML 和 CSS
         st.markdown(full_html, unsafe_allow_html=True)
         
     else:
         st.info("⌛ 暂无历史观测数据")
+
+    st.markdown("---")
+    st.markdown("### 📡 最近METAR")
+    
+    # 最近报文原始数据显示（同样修复了缩进问题）
+    if data:
+        metar_blocks = ""
+        recent_items = data[-10:] if len(data) >= 10 else data
+        for row in reversed(recent_items):
+            dt_display = pd.to_datetime(row['time']).strftime("%H:%M:%S")
+            # 将 HTML 写成紧凑格式，防止空格缩进触发代码块
+            metar_blocks += f'<div style="background: rgba(0, 170, 255, 0.05); border-left: 4px solid #00aaff; padding: 8px; margin-bottom: 6px; border-radius: 4px; transition: all 0.2s ease;"><span style="color: #0077aa; font-size: 11px; font-weight: bold;">● {dt_display}</span><br><code style="color: #003344; font-size: 11px; background: transparent;">{row["raw"]}</code></div>\n'
+            
+        st.markdown(f'<div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">\n{metar_blocks}\n</div>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("### 📡 最近METAR")
