@@ -817,64 +817,63 @@ with col3:
         st.markdown(f'<div style="max-height: 450px; overflow-y: auto; padding-right: 5px;">\n{metar_blocks}\n</div>', unsafe_allow_html=True)
 
 # =========================================================
-# 🏛️ 模块：Wunderground 官方结算参考
+# 🏛️ 模块：Wunderground 官方结算参考 (修复增强版)
 # =========================================================
-st.markdown("---")  # 添加一条水平分割线
-st.markdown("### 🏛️ Wunderground 结算参考")
 
-# 1. 动态生成结算链接 (基于当前日期)
+st.markdown("---")
+st.markdown("### 🏛️ Wunderground 官方结算参考")
+
+# 🔥 强制刷新 markdown 状态（关键修复）
+st.markdown("")
+
 target_date = now_local().strftime('%Y-%m-%d')
-# Polymarket 指定的官方结算基础 URL
-base_settle_url = "https://www.wunderground.com/history/daily/cn/shanghai/ZSPD"
-# 拼接成带日期的具体页面
-full_settle_url = f"{base_settle_url}/date/{target_date}"
+wunderground_url = f"https://www.wunderground.com/history/daily/cn/shanghai/ZSPD/date/{target_date}"
 
-# 2. 核心 HTML 字符串 (修复了未识别问题)
-# 注意：所有 CSS 样式都内联在 style 属性中，确保 100% 识别
-wunderground_html = f"""
+html_block = f"""
 <div style="
-    background: rgba(255, 170, 0, 0.08); 
-    border: 2px solid #ffaa00; 
-    border-radius: 12px; 
-    padding: 20px; 
-    margin-top: 10px;
-    box-shadow: 0 4px 20px rgba(255, 170, 0, 0.15);
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #ffaa00;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(255, 170, 0, 0.15);
 ">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
-            <span style="font-size: 20px; font-weight: bold; color: #cc8800;">⚖️ 结算预言机 (Oracle) 校验</span><br>
-            <span style="font-size: 14px; color: #666;">依据站：Shanghai Pudong (ZSPD)</span>
+            <h4 style="margin: 0; color: #cc8800;">⚠️ Polymarket 结算预言机校验</h4>
+            <p style="margin: 5px 0; font-size: 14px; color: #666;">
+                当前监控站点：<b>ZSPD (Pudong Intl)</b> | 结算基准日期：<b>{target_date}</b>
+            </p>
         </div>
-        <a href="{full_settle_url}" target="_blank" style="
-            background: #ffaa00; 
-            color: white; 
-            padding: 10px 18px; 
-            border-radius: 8px; 
-            text-decoration: none; 
+        <a href="{wunderground_url}" target="_blank" style="
+            text-decoration: none;
+            background: #ffaa00;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
             font-weight: bold;
-            font-size: 14px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        ">直达 Wunderground 结算页 🔗</a>
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        ">打开 Wunderground 官方页 🔗</a>
     </div>
 
-    <div style="background: white; border-radius: 8px; padding: 15px; border-left: 5px solid #ffaa00;">
-        <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.6;">
-            <b>当前结算日期：</b> <code style="color: #d63384;">{target_date}</code><br>
-            <b>Polymarket 规则：</b> 最终结算将严格参考该页面 <i>"Daily Observations"</i> 表格中的 <b>High</b> (最高温) 字段。
-        </p>
-    </div>
-
-    <div style="margin-top: 15px; font-size: 12px; color: #888; text-align: center;">
-        🛡️ 系统提示：METAR 报文与结算页面可能存在 1-2 小时的同步延迟，请以官网最终更新为准。
+    <div style="
+        margin-top: 15px;
+        padding: 10px;
+        background: rgba(255, 180, 0, 0.05);
+        border-radius: 8px;
+        font-size: 13px;
+        color: #555;
+        line-height: 1.6;
+    ">
+        <b>💡 交易员笔记：</b><br>
+        1. <b>基差风险：</b>METAR 每 30-60 分钟发布一次，而 Wunderground 的结算数据可能包含报文间隙中的极值。<br>
+        2. <b>时间差：</b>Wunderground 的数据同步可能存在 1-2 小时延迟，请以该页面最终显示的 <i>"Daily Observations"</i> 表格中的 Max Temp 为准。
     </div>
 </div>
 """
 
-# 3. 关键修复点：添加 unsafe_allow_html=True
-st.markdown(wunderground_html, unsafe_allow_html=True)
+st.markdown(html_block, unsafe_allow_html=True)
 
-# 4. 预览窗口 (可选)
-with st.expander("👁️ 快速查看结算页内容 (若无法显示请点击上方按钮)"):
-    # 嵌入网页
-    components.iframe(full_settle_url, height=500, scrolling=True)
+# iframe 预览
+with st.expander("👁️ 快速预览 Wunderground 表格 (如果加载失败请使用上方按钮)"):
+    components.iframe(wunderground_url, height=600, scrolling=True)
 
