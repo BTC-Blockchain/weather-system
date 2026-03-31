@@ -863,9 +863,9 @@ html_block = f"""
         color: #555;
         line-height: 1.6;
     ">
-        <b>💡 交易员笔记：</b><br>
-        1. <b>基差风险：</b>METAR 每 30-60 分钟发布一次，而 Wunderground 的结算数据可能包含报文间隙中的极值。<br>
-        2. <b>时间差：</b>Wunderground 的数据同步可能存在 1-2 小时延迟，请以该页面最终显示的 <i>"Daily Observations"</i> 表格中的 Max Temp 为准。
+       <p><b>💡 交易员笔记：</b></p>
+       <p>1. <b>基差风险：</b>METAR 每 30-60 分钟发布一次，而 Wunderground 的结算数据可能包含报文间隙中的极值。</p>
+       <p>2. <b>时间差：</b>Wunderground 的数据同步可能存在 1-2 小时延迟，请以该页面最终显示的 <i>"Daily Observations"</i> 表格中的 Max Temp 为准。</p>
     </div>
 </div>
 """
