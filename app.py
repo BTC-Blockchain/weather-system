@@ -842,7 +842,7 @@ settlement_html = f"""
         <div style="margin-top: 15px; padding: 10px; background: rgba(255, 180, 0, 0.1); border-radius: 8px; font-size: 13px; color: #444; line-height: 1.6; border-left: 4px solid #ffaa00;">
         <b style="color: #cc8800;">💡 交易员笔记：</b><br>
         1. <b>基差风险：</b>通常情况下METAR 每 30分钟发布一次数据，而 Wunderground 的结算数据可能包含报文间隙中的极值。<br>
-        2. <b>时间差：</b>Wunderground 的数据同步可能存在 1-2 小时延迟，请以该页面最终显示的 <i>"Daily Observations"</i> 表格中"Temperature"列的 MaxTemp值为准。
+        2. <b>时间差：</b>Wunderground 的数据同步可能存在 1-2 小时延迟，请以该页面最终显示的 <i>"Daily Observations"</i> 表格中"Temperature"列的 MaxTemp值为准。<br>
         3. <b>数据风险：</b>METAR 体系：坚如磐石。它是受各国政府和国际航空法严格监管的航空安全设施，篡改难度极高，基本可以排除人为操控。<br>
         4. <b>极端情况：</b>METAR ZSPD站点掉线，Wunderground 的算法是否会自动回退（Fallback）到附近的某个私人气象站？本系统截止2026年4月，尚未观测到此极端情形发生。<br>
         </div>
