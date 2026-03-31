@@ -816,61 +816,55 @@ with col3:
             
         st.markdown(f'<div style="max-height: 450px; overflow-y: auto; padding-right: 5px;">\n{metar_blocks}\n</div>', unsafe_allow_html=True)
 
-# =========================================================
-# 🏛️ 模块：Wunderground 官方结算参考 (修复增强版)
-# =========================================================
+# ==========================================
+# 🏛️ 模块：Wunderground 官方结算参考 (修复版)
+# ==========================================
 st.markdown("---")
-st.markdown("### 🏛️ Wunderground 官方结算参考")
+st.markdown("### 🏛️ Wunderground 官方数据校验")
 
-# 🔥 强制刷新 markdown 状态（关键修复）
-st.markdown("")
-
+# 1. 准备动态数据
 target_date = now_local().strftime('%Y-%m-%d')
-wunderground_url = f"https://www.wunderground.com/history/daily/cn/shanghai/ZSPD/date/{target_date}"
+wunder_url = f"https://www.wunderground.com/history/daily/cn/shanghai/ZSPD/date/{target_date}"
 
-html_block = f"""
+# 2. 编写 HTML 字符串
+# 注意：我们将你提供的“交易员笔记”嵌入到一个完整的卡片容器中
+wunderground_module_html = f"""
 <div style="
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.7);
     border: 2px solid #ffaa00;
     border-radius: 15px;
     padding: 20px;
-    box-shadow: 0 4px 15px rgba(255, 170, 0, 0.15);
+    box-shadow: 0 4px 15px rgba(255, 170, 0, 0.1);
+    font-family: sans-serif;
 ">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <h4 style="margin: 0; color: #cc8800;">⚠️ Polymarket 结算预言机校验</h4>
-            <p style="margin: 5px 0; font-size: 14px; color: #666;">
-                当前监控站点：<b>ZSPD (Pudong Intl)</b> | 结算基准日期：<b>{target_date}</b>
-            </p>
-        </div>
-        <a href="{wunderground_url}" target="_blank" style="
-            text-decoration: none;
-            background: #ffaa00;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        ">打开 Wunderground 官方页 🔗</a>
+        <h4 style="margin: 0; color: #cc8800;">⚖️ 结算预言机参考 (ZSPD)</h4>
+        <a href="{wunder_url}" target="_blank" style="
+            text-decoration: none; background: #ffaa00; color: white; 
+            padding: 8px 15px; border-radius: 6px; font-weight: bold; font-size: 13px;
+        ">访问官方结算页 🔗</a>
     </div>
 
+    <!-- 这里是你之前失效的代码段，现在已修复 -->
     <div style="
         margin-top: 15px;
-        padding: 10px;
-        background: rgba(255, 180, 0, 0.05);
+        padding: 12px;
+        background: rgba(255, 180, 0, 0.1);
         border-radius: 8px;
         font-size: 13px;
-        color: #555;
+        color: #444;
         line-height: 1.6;
+        border-left: 4px solid #ffaa00;
     ">
-       <p><b>💡 交易员笔记：</b></p>
-       <p>1. <b>基差风险：</b>METAR 每 30-60 分钟发布一次，而 Wunderground 的结算数据可能包含报文间隙中的极值。</p>
-       <p>2. <b>时间差：</b>Wunderground 的数据同步可能存在 1-2 小时延迟，请以该页面最终显示的 <i>"Daily Observations"</i> 表格中的 Max Temp 为准。</p>
+        <b style="color: #cc8800;">💡 交易员笔记：</b><br>
+        1. <b>基差风险：</b>METAR 每 30-60 分钟发布一次，而 Wunderground 的结算数据可能包含报文间隙中的极值。<br>
+        2. <b>时间差：</b>Wunderground 的数据同步可能存在 1-2 小时延迟，请以该页面最终显示的 <i>"Daily Observations"</i> 表格中的 Max Temp 为准。
     </div>
 </div>
 """
 
-st.markdown(html_block, unsafe_allow_html=True)
+# 3. 核心修复：使用 unsafe_allow_html=True
+st.markdown(wunderground_module_html, unsafe_allow_html=True)
 
 # iframe 预览
 with st.expander("👁️ 快速预览 Wunderground 表格 (如果加载失败请使用上方按钮)"):
