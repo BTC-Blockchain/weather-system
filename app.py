@@ -819,7 +819,6 @@ with col3:
 # =========================================================
 # 🏛️ 模块：Wunderground 官方结算参考 (修复增强版)
 # =========================================================
-st.write("")  # 强制断开上下文
 st.markdown("---")
 st.markdown("### 🏛️ Wunderground 官方结算参考")
 
@@ -876,4 +875,11 @@ st.markdown(html_block, unsafe_allow_html=True)
 # iframe 预览
 with st.expander("👁️ 快速预览 Wunderground 表格 (如果加载失败请使用上方按钮)"):
     components.iframe(wunderground_url, height=600, scrolling=True)
+
+
+st.markdown("""
+<div style="color:red;">
+    如果你看到红字，说明HTML正常
+</div>
+""", unsafe_allow_html=True)
 
