@@ -495,7 +495,7 @@ if st.session_state.audio_unlocked and is_new:
 
 # 数据来源
 delay_info = f"**{int(delay_min)}** 分钟" 
-space = "&nbsp;" * 50
+space = "&nbsp;" * 80
 
 if source == "REALTIME":
     st.success(f" {space} 🟢 数据来源：实时METAR {space} ⌛⌛截至当前时间，距离上一次获取实时数据已经延迟：{delay_info}")
