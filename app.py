@@ -819,22 +819,17 @@ with col3:
 # =========================================================
 # 🏛️ 模块：Wunderground 官方结算参考 (新增)
 # =========================================================
-st.markdown("---") # 分隔线
+st.markdown("---") 
 st.markdown("### 🏛️ Wunderground 官方结算参考")
 
-# 1. 动态生成 Wunderground 查询链接 (基于当前本地日期)
+# 1. 准备动态数据
 target_date = now_local().strftime('%Y-%m-%d')
 wunderground_url = f"https://www.wunderground.com/history/daily/cn/shanghai/ZSPD/date/{target_date}"
 
-# 2. 创建结算信息卡片
-st.markdown(f"""
-<div style="
-    background: rgba(255, 255, 255, 0.8);
-    border: 2px solid #ffaa00;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 4px 15px rgba(255, 170, 0, 0.15);
-">
+# 2. 构建 HTML 字符串 (确保 div 标签前没有任何多余的缩进/空格)
+# 注意：这里使用变量存储，避免在 st.markdown 内部编写长文本导致格式混乱
+settlement_html = f"""
+<div style="background: rgba(255, 255, 255, 0.8); border: 2px solid #ffaa00; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(255, 170, 0, 0.15); font-family: sans-serif;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
             <h4 style="margin: 0; color: #cc8800;">⚠️ Polymarket 结算预言机校验</h4>
@@ -842,37 +837,23 @@ st.markdown(f"""
                 当前监控站点：<b>ZSPD (Pudong Intl)</b> | 结算基准日期：<b>{target_date}</b>
             </p>
         </div>
-        <a href="{wunderground_url}" target="_blank" style="
-            text-decoration: none;
-            background: #ffaa00;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        ">打开 Wunderground 官方页 🔗</a>
+        <a href="{wunderground_url}" target="_blank" style="text-decoration: none; background: #ffaa00; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">打开 Wunderground 官方页 🔗</a>
     </div>
     
-    <div style="
-        margin-top: 15px;
-        padding: 10px;
-        background: rgba(255, 180, 0, 0.05);
-        border-radius: 8px;
-        font-size: 13px;
-        color: #555;
-        line-height: 1.6;
-    ">
-        <b>💡 交易员笔记：</b><br>
+    <div style="margin-top: 15px; padding: 10px; background: rgba(255, 180, 0, 0.1); border-radius: 8px; font-size: 13px; color: #444; line-height: 1.6; border-left: 4px solid #ffaa00;">
+        <b style="color: #cc8800;">💡 交易员笔记：</b><br>
         1. <b>基差风险：</b>METAR 每 30-60 分钟发布一次，而 Wunderground 的结算数据可能包含报文间隙中的极值。<br>
         2. <b>时间差：</b>Wunderground 的数据同步可能存在 1-2 小时延迟，请以该页面最终显示的 <i>"Daily Observations"</i> 表格中的 Max Temp 为准。
     </div>
 </div>
-""", unsafe_allow_html=True)
+"""
 
-# 3. 尝试嵌入实时页面预览
-# 注意：部分浏览器或 Wunderground 安全策略可能会阻止 Iframe 加载，
-# 如果加载失败，用户仍可点击上方按钮。
-with st.expander("👁️ 快速预览 Wunderground 表格 (如果加载失败请使用上方按钮)"):
+# 3. 渲染 HTML (确保参数正确)
+st.markdown(settlement_html, unsafe_allow_html=True)
+
+# 4. 预览窗口
+with st.expander("👁️ 快速预览 Wunderground 表格 (若加载失败请点击上方按钮)"):
+    import streamlit.components.v1 as components
     components.iframe(wunderground_url, height=600, scrolling=True)
 
 
