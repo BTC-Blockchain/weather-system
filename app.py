@@ -839,12 +839,11 @@ settlement_html = f"""
         </div>
         <a href="{wunderground_url}" target="_blank" style="text-decoration: none; background: #ffaa00; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">打开 Wunderground 官方页 🔗</a>
     </div>
-    
-    <div style="margin-top: 15px; padding: 10px; background: rgba(255, 180, 0, 0.1); border-radius: 8px; font-size: 13px; color: #444; line-height: 1.6; border-left: 4px solid #ffaa00;">
+        <div style="margin-top: 15px; padding: 10px; background: rgba(255, 180, 0, 0.1); border-radius: 8px; font-size: 13px; color: #444; line-height: 1.6; border-left: 4px solid #ffaa00;">
         <b style="color: #cc8800;">💡 交易员笔记：</b><br>
         1. <b>基差风险：</b>METAR 每 30-60 分钟发布一次，而 Wunderground 的结算数据可能包含报文间隙中的极值。<br>
         2. <b>时间差：</b>Wunderground 的数据同步可能存在 1-2 小时延迟，请以该页面最终显示的 <i>"Daily Observations"</i> 表格中的 Max Temp 为准。
-    </div>
+        </div>
 </div>
 """
 
