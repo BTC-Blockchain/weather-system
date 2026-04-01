@@ -486,8 +486,10 @@ def peak_probability(data):
 # ======================
 # --- 在启动逻辑之前添加 ---
 delay_min = 0  # 赋初始值，防止报错
-source = "UNKNOWN"
+is_delayed = False
 is_new = False
+source = "UNKNOWN"
+current = None # 初始设为 None
 data = load_cache()
 
 # 重点修复：不再只判断“是否为空”，而是判断“数据够不够”
