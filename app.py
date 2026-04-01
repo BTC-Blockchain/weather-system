@@ -278,15 +278,17 @@ def init_today_history():
 
             if temp is not None and obs:
                 try:
+                    # 【修改点 1：先获取纯粹的 UTC 时间】
                     if isinstance(obs, int):
-                        # 修复点：直接使用从 datetime 导入的 timezone
                         import datetime as dt_module # 局部导入以防万一
-                        utc dt = datetime.fromtimestamp(obs, dt_module.timezone.utc).replace(tzinfo=None)
+                        utc_dt = datetime.fromtimestamp(obs, dt_module.timezone.utc).replace(tzinfo=None)
                     else:
-                        utc dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ")
-                        # 【修改点 2：分别计算展示用的北京时间，以及原始的 UTC 字符串】
+                        utc_dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ")
+                    
+                    # 【修改点 2：分别计算展示用的北京时间，以及原始的 UTC 字符串】
                     dt = utc_dt + timedelta(hours=8)                 # 北京时间
                     utc_metar_time = f"{utc_dt.strftime('%d%H%M')}Z" # 还原为纯正的 METAR UTC 格式
+
                 except Exception as e:
                     stats["time_error"] += 1
                     print(f"⚠️ 单条数据时间解析失败: {e}")
