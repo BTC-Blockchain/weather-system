@@ -279,13 +279,15 @@ def init_today_history():
             if temp is not None and obs:
                 try:
                     if isinstance(obs, int):
-                        dt = datetime.fromtimestamp(obs, timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
+                        # 修复点：直接使用从 datetime 导入的 timezone
+                        import datetime as dt_module # 局部导入以防万一
+                        dt = datetime.fromtimestamp(obs, dt_module.timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
                     else:
                         dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=8)
                 except Exception as e:
                     stats["time_error"] += 1
-                    print(f"⚠️ 单条数据时间解析失败并跳过: {e} (原始时间: {obs})")
-                    continue 
+                    print(f"⚠️ 单条数据时间解析失败: {e}")
+                    continue
                 
                 # 时间匹配检查
                 if dt.date() == now_local().date():
