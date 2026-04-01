@@ -549,12 +549,12 @@ current = None # 初始设为 None
 data = load_cache()
 
 # 重点修复：不再只判断“是否为空”，而是判断“数据够不够”
-# 只要少于 5 条，就认为历史数据补全失败，强制再运行一次
-# if len(data) < 1:
+# 只要少于 1 条，就认为历史数据补全失败，强制再运行一次
+if len(data) < 1:
     # 强制在控制台和网页同时输出，确保你能看到
-print(f"📡 [DEBUG] 当前缓存数据量 {len(data)} 条，开始执行 init_today_history...")
-st.toast("正在尝试补全今日历史报文...", icon="🔄", duration=10)
-data = init_today_history()
+    print(f"📡 [DEBUG] 当前缓存数据量 {len(data)} 条，开始执行 init_today_history...")
+    st.toast("正在尝试补全今日历史报文...", icon="🔄", duration=10)
+    data = init_today_history()
 
 # 获取实时数据
 data, is_new, source = get_today_data()
