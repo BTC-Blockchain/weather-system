@@ -225,7 +225,7 @@ def init_today_history():
         # 优化点 1：将抓取时长增加到 48 小时。
         # 这样无论当前是下午还是晚上，都能确保覆盖到"昨天"的 UTC 时间，从而不漏掉本地今天凌晨的数据。
         params = {"ids": "ZSPD", "format": "json", "hours": 48}
-        res = requests.get(url, params=params, timeout=3)
+        res = requests.get(url, params=params, timeout=10)
         metars = res.json()
 
         data = []
@@ -247,6 +247,7 @@ def init_today_history():
 
         if len(data) > 5:
             data = sorted(data, key=lambda x: x["time"])
+            print("✅ 历史源1(Aviation Weather)抓取成功，准备写入文件")
             save_cache(data)
             return data
     except:
@@ -266,7 +267,7 @@ def init_today_history():
         # 将正确转换后的 UTC 年/月/日/时 填入 URL 
         url = f"https://www.ogimet.com/display_metars2.php?lang=en&lugar=ZSPD&tipo=ALL&ord=REV&nil=NO&fmt=txt&ano={utc_start.year}&mes={utc_start.month:02d}&day={utc_start.day:02d}&hora={utc_start.hour:02d}&anof={utc_end.year}&mesf={utc_end.month:02d}&dayf={utc_end.day:02d}&horaf={utc_end.hour:02d}&minf=59"
         
-        text = requests.get(url, timeout=3).text
+        text = requests.get(url, timeout=10).text
         lines = text.split("\n")
 
         data = []
@@ -295,12 +296,15 @@ def init_today_history():
 
         if len(data) > 5:
             data = sorted(data, key=lambda x: x["time"])
+            print("✅ 历史源2(Ogimet)抓取成功，准备写入文件")
             save_cache(data)
             return data
-    except:
+    except Exception as e:
+        print(f"❌ 抓取失败，错误原因: {e}")
         pass
 
     return load_cache()
+
 
 # ======================
 # 实时数据
