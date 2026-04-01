@@ -197,10 +197,35 @@ def now_local():
     return datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
     
 
-def utc_to_local(day, hour, minute):
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    dt = datetime(now.year, now.month, int(day), int(hour), int(minute))
-    return dt + timedelta(hours=8)
+# def utc_to_local(day, hour, minute):
+#    now = datetime.now(timezone.utc).replace(tzinfo=None)
+#    dt = datetime(now.year, now.month, int(day), int(hour), int(minute))
+#    return dt + timedelta(hours=8)
+
+def utc_to_local(day_str, hour_str, min_str):
+    """将 METAR 报文中的 日/时/分 转换为北京时间，自动处理跨月"""
+    now = now_local()
+    day = int(day_str)
+    hour = int(hour_str)
+    minute = int(min_str)
+    
+    try:
+        # 尝试以当前月份构造 UTC 时间
+        utc_dt = datetime(now.year, now.month, day, hour, minute)
+        
+        # 如果构造出的时间比现在还晚（例如现在1号，报文是31号），说明是上个月的
+        if utc_dt > datetime.now().replace(tzinfo=None) + timedelta(hours=2): 
+            raise ValueError("Future date")
+            
+    except ValueError:
+        # 进入此处说明：要么4月没有31日，要么时间超前了，判定为上个月
+        # 计算上个月的年份和月份
+        first_of_this_month = now.replace(day=1)
+        last_month_end = first_of_this_month - timedelta(days=1)
+        utc_dt = datetime(last_month_end.year, last_month_end.month, day, hour, minute)
+    
+    # 返回北京时间 (UTC+8)
+    return utc_dt + timedelta(hours=8)
 
 # ======================
 # 缓存
@@ -247,9 +272,10 @@ def init_today_history():
                         "raw": raw
                     })
 
-        if len(data) > 5:
+        if len(data) ≥ 1:
             data = sorted(data, key=lambda x: x["time"])
             print("✅ 历史源1(Aviation Weather)抓取成功")
+            print(f"✅ 抓取成功，获取到 {len(data)} 条历史记录")
             save_cache(data)
             return data
     except Exception as e:
@@ -300,9 +326,10 @@ def init_today_history():
                     "raw": line.strip()
                 })
 
-        if len(data) > 5:
+        if len(data) ≥ 1:
             data = sorted(data, key=lambda x: x["time"])
             print("✅ 历史源2(Ogimet)抓取成功")
+            print(f"✅ 抓取成功，获取到 {len(data)} 条历史记录")
             save_cache(data)
             return data
             
