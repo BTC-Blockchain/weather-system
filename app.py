@@ -220,13 +220,15 @@ def save_cache(data):
 # 历史数据（双源修复版：精准拉取本地凌晨数据）
 # ======================
 def init_today_history():
+    print("🔍 进入 init_today_history 函数...")
+    # 模拟浏览器请求头，增加成功率
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    
     # --- 数据源 1：Aviation Weather ---
     try:
         url = "https://aviationweather.gov/api/data/metar"
-        # 优化点 1：将抓取时长增加到 48 小时。
-        # 这样无论当前是下午还是晚上，都能确保覆盖到"昨天"的 UTC 时间，从而不漏掉本地今天凌晨的数据。
         params = {"ids": "ZSPD", "format": "json", "hours": 48}
-        res = requests.get(url, params=params, timeout=10)
+        res = requests.get(url, params=params, headers=headers, timeout=15) # 增加超时
         metars = res.json()
 
         data = []
@@ -235,9 +237,8 @@ def init_today_history():
             raw = m.get("rawOb") or m.get("raw_text")
             obs = m.get("obsTime") or m.get("observation_time")
 
-            if temp and obs:
+            if temp is not None and obs:
                 dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=8)
-                # 严格过滤，只保留本地当天的记录
                 if dt.date() == now_local().date():
                     data.append({
                         "metar_time": dt.strftime("%d%H%M"),
@@ -248,45 +249,49 @@ def init_today_history():
 
         if len(data) > 5:
             data = sorted(data, key=lambda x: x["time"])
-            print("✅ 历史源1(Aviation Weather)抓取成功，准备写入文件")
+            print("✅ 历史源1(Aviation Weather)抓取成功")
             save_cache(data)
             return data
-    except:
-        pass
+    except Exception as e:
+        print(f"⚠️ 历史源1抓取跳过: {e}")
 
-    # --- 数据源 2：Ogimet ---
+    # --- 数据源 2：Ogimet (重点修改区域) ---
     try:
         now_loc = now_local()
-        # 优化点 2：明确获取本地当天的凌晨 00:00
-        local_start = datetime(now_loc.year, now_loc.month, now_loc.day, 0, 0)
-        # 转换为 Ogimet 需要的 UTC 时间（即前一天的 16:00 UTC）
+        
+        # 【修改点 1：安全构造北京时间凌晨】
+        # 直接通过 timedelta 计算，避免手动填入 day=31 这种可能溢出的数字
+        local_start = now_loc.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # 【修改点 2：安全构造 UTC 时间】
+        # 减去 8 小时会自动处理跨月、跨年（例如从 4月1日 变成 3月31日）
         utc_start = local_start - timedelta(hours=8)
         
-        # 结束时间直接设为当前的 UTC 时间即可
+        # 结束时间
+        from datetime import timezone
         utc_end = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        # 将正确转换后的 UTC 年/月/日/时 填入 URL 
+        # URL 拼接保持不变，此时的 utc_start.day 已经是安全的了
         url = f"https://www.ogimet.com/display_metars2.php?lang=en&lugar=ZSPD&tipo=ALL&ord=REV&nil=NO&fmt=txt&ano={utc_start.year}&mes={utc_start.month:02d}&day={utc_start.day:02d}&hora={utc_start.hour:02d}&anof={utc_end.year}&mesf={utc_end.month:02d}&dayf={utc_end.day:02d}&horaf={utc_end.hour:02d}&minf=59"
         
-        text = requests.get(url, timeout=10).text
+        print(f"📡 正在尝试 Ogimet URL: {url}")
+        text = requests.get(url, headers=headers, timeout=15).text
         lines = text.split("\n")
 
         data = []
         for line in lines:
-            if "ZSPD" not in line:
-                continue
-
+            if "ZSPD" not in line: continue
             t = re.search(r'(\d{2})(\d{2})(\d{2})Z', line)
             temp_match = re.search(r' (M?\d{2})/(M?\d{2}) ', line)
-
-            if not t or not temp_match:
-                continue
+            if not t or not temp_match: continue
 
             day, hour, minute = t.groups()
             temp = int(temp_match.group(1).replace("M", "-"))
+            
+            # 【修改点 3：修复 utc_to_local 内部可能的跨月逻辑】
+            # 确保 utc_to_local 函数能正确处理“报文是31日，现在是1日”的情况
             dt = utc_to_local(day, hour, minute)
 
-            # 同样严格过滤本地当天数据
             if dt.date() == now_loc.date():
                 data.append({
                     "metar_time": f"{day}{hour}{minute}",
@@ -297,12 +302,13 @@ def init_today_history():
 
         if len(data) > 5:
             data = sorted(data, key=lambda x: x["time"])
-            print("✅ 历史源2(Ogimet)抓取成功，准备写入文件")
+            print("✅ 历史源2(Ogimet)抓取成功")
             save_cache(data)
             return data
+            
     except Exception as e:
-        print(f"❌ 抓取失败，错误原因: {e}")
-        pass
+        print(f"❌ 历史源2最终失败: {e}")
+        # 这里会打印具体的错误原因
 
     return load_cache()
 
