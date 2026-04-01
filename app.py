@@ -309,6 +309,7 @@ def init_today_history():
             data = sorted(data, key=lambda x: x["time"])
             print("✅ 历史源1(Aviation Weather)抓取成功")
             print(f"✅ 获取到 {len(data)} 条属于当天的历史记录")
+            st.session_state.hist_source_name = "源1：Aviation Weather 官方源"
             save_cache(data)
             return data
         else:
@@ -373,6 +374,7 @@ def init_today_history():
             data = sorted(data, key=lambda x: x["time"])
             print("✅ 历史源2(Ogimet)抓取成功")
             print(f"✅ 抓取成功，获取到 {len(data)} 条历史记录")
+            st.session_state.hist_source_name = "源2：Ogimet 备份源"
             save_cache(data)
             return data
             
@@ -541,6 +543,8 @@ def peak_probability(data):
 # 启动 (彻底修复版)
 # ======================
 # --- 在启动逻辑之前添加 ---
+if "hist_source_name" not in st.session_state:
+    st.session_state.hist_source_name = "本地缓存" # 默认值
 delay_min = 0  # 赋初始值，防止报错
 is_delayed = False
 is_new = False
@@ -852,7 +856,9 @@ with col2:
 
 
 with col3:
-    st.markdown("### 📋 历史数据")
+    source_label = st.session_state.get("hist_source_name", "本地缓存")
+    st.markdown(f"### 📋 历史数据 <span style='font-size:14px; color:#888; font-weight:normal;'>({source_label})</span>", unsafe_allow_html=True)
+#   st.markdown("### 📋 历史数据")
 
     if data:
         # 1. 准备数据并按时间倒序排列
