@@ -500,22 +500,19 @@ if not initial_data or len(initial_data) <= 2:
 data, is_new, source = get_today_data(existing_data=initial_data)
 
 # 5. 执行“变量计算逻辑” (max_temp 等)
-# === 新增：统一数据处理逻辑  ===
-    if data and len(data) > 0:
-        # 提取温度列表用于计算
-        temp_list = [x["temp"] for x in data]
-        max_temp = max(temp_list)
-        
-        # 找到最高温对应的时间
-        max_idx = temp_list.index(max_temp)
-        max_time_str = data[max_idx]["time"].split(" ")[1] # 只取 HH:M
-        
-        # 定义缺失的 formatted_time (取最后一条数据的时间)
-        formatted_time = data[-1]["time"]
-    else:
-        max_temp = "--"
-        max_time_str = "无"
-        formatted_time = "未同步"
+# === 确保下面这一行没有多余的空格，与上面的 data 赋值对齐 ===
+if data and len(data) > 0:
+    # 提取温度列表用于计算
+    temp_list = [x["temp"] for x in data]
+    max_temp = max(temp_list)
+    # 找到最高温对应的时间
+    max_idx = temp_list.index(max_temp)
+    max_time_str = data[max_idx]["time"].split(" ")[1]
+    formatted_time = data[-1]["time"]
+else:
+    max_temp = "--"
+    max_time_str = "无"
+    formatted_time = "未同步"
 
 
 # ======================
