@@ -7,7 +7,7 @@ import plotly.express as px
 import json
 import re
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone # 增加 timezone 导入
 from streamlit_autorefresh import st_autorefresh
 
 # =========================================================
@@ -19,8 +19,8 @@ st.set_page_config(page_title="METAR监控系统", layout="wide")
 # 2. 功能函数定义
 # =========================================================
 def now_local():
-    """获取北京时间 (UTC+8)"""
-    return datetime.utcnow() + timedelta(hours=8)
+"""获取北京时间 (UTC+8)"""
+    return datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
 
 # =========================================================
 # 3. 自动刷新与 CSS 注入 (极致紧凑布局)
@@ -194,10 +194,11 @@ section[data-testid="stHorizontalBlock"] > div:hover {
 # 时间
 # ======================
 def now_local():
-    return datetime.utcnow() + timedelta(hours=8)
+    return datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
+    
 
 def utc_to_local(day, hour, minute):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     dt = datetime(now.year, now.month, int(day), int(hour), int(minute))
     return dt + timedelta(hours=8)
 
@@ -262,7 +263,7 @@ def init_today_history():
         utc_start = local_start - timedelta(hours=8)
         
         # 结束时间直接设为当前的 UTC 时间即可
-        utc_end = datetime.utcnow()
+        utc_end = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # 将正确转换后的 UTC 年/月/日/时 填入 URL 
         url = f"https://www.ogimet.com/display_metars2.php?lang=en&lugar=ZSPD&tipo=ALL&ord=REV&nil=NO&fmt=txt&ano={utc_start.year}&mes={utc_start.month:02d}&day={utc_start.day:02d}&hora={utc_start.hour:02d}&anof={utc_end.year}&mesf={utc_end.month:02d}&dayf={utc_end.day:02d}&horaf={utc_end.hour:02d}&minf=59"
@@ -491,7 +492,7 @@ if st.button("🔊 启用声音提醒"):
 # ✅ 直接利用你原本代码中完美的 is_new 变量，最精准！
 if st.session_state.audio_unlocked and is_new:
     # 加上时间戳防止浏览器缓存，确保每次新数据都响
-    alert_url = f"https://actions.google.com/sounds/v1/alarms/beep_short.ogg?t={datetime.utcnow().timestamp()}"
+    alert_url = f"https://actions.google.com/sounds/v1/alarms/beep_short.ogg?t={datetime.now(timezone.utc).timestamp()}"
     st.markdown(f'<audio autoplay><source src="{alert_url}" type="audio/ogg"></audio>', unsafe_allow_html=True)
     
     # 加上一个视觉弹窗，做双重保障
@@ -695,7 +696,8 @@ with col2:
     )
 
     # 使用 Streamlit 渲染图表
-    st.plotly_chart(fig, use_container_width=True)
+    # st.plotly_chart(fig, use_container_width=True)  Streamlit 提示 use_container_width 参数将在 2025 年底移除
+    st.plotly_chart(fig, width="stretch")
 
 
 # 1. 重新构建数据逻辑
