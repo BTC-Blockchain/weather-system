@@ -253,6 +253,15 @@ def init_today_history():
             # 修复点 2：只要有数据就保存，不要硬性要求大于 5 条 (防止凌晨数据被丢弃)
             if len(data) > 0:
                 data = sorted(data, key=lambda x: x["time"])
+                          
+                # 🚨 判断是否“覆盖从00点开始”
+                first_time = datetime.strptime(data[0]["time"], "%Y-%m-%d %H:%M")
+                now = now_local()
+            
+                # 如果当前时间已经 > 3点，但数据不是从凌晨开始 → 认为不完整
+                if now.hour >= 3 and first_time.hour > 1:
+                    st.toast("Aviation 数据不完整，切换 Ogimet", icon="⚠️")
+            else:
                 return data
         else:
             st.toast(f"Aviation 源异常: HTTP {res.status_code}", icon="⚠️")
