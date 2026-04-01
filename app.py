@@ -255,8 +255,10 @@ def init_today_history():
                 data = sorted(data, key=lambda x: x["time"])
                 save_cache(data)
                 return data
+        else:
+            st.toast(f"Aviation 源异常: HTTP {res.status_code}", icon="⚠️")
     except Exception as e:
-        pass # 如果源 1 崩溃，静默进入源 2
+        st.toast(f"Aviation 源请求超时或报错", icon="⚠️")
 
     # --- 数据源 2：Ogimet ---
     try:
@@ -303,11 +305,17 @@ def init_today_history():
                 data = sorted(data, key=lambda x: x["time"])
                 save_cache(data)
                 return data
+        else:
+            if "<html" in res.text.lower():
+                st.toast("Ogimet 源触发反爬/限流，已拦截 HTML 乱码", icon="🛡️")
+            else:
+                st.toast(f"Ogimet 源异常: HTTP {res.status_code}", icon="⚠️")
     except Exception as e:
-        pass
+        st.toast(f"Ogimet 源请求超时或报错", icon="⚠️")
 
-    # 如果两个源都彻底失败，尝试加载本地旧缓存
-    return load_cache()
+    # 如果运行到这里，说明双源全部失效
+    st.toast("历史数据双节点拉取失败，系统将依赖实时数据逐渐重建", icon="🚨")
+    return []
 
 # ======================
 # 实时数据
@@ -451,31 +459,38 @@ def peak_probability(data):
     return min(round(score), 100)
 
 # ======================
-# 启动
+# 启动与防死锁缓存逻辑
 # ======================
+# 1. 加载本地缓存
 data = load_cache()
-if not data:
-    data = init_today_history()
 
+# 2. 跨日清理机制：如果缓存里的最后一条数据不是今天的，清空它
+if data:
+    try:
+        last_record_dt = datetime.strptime(data[-1]["time"], "%Y-%m-%d %H:%M")
+        if last_record_dt.date() != now_local().date():
+            data = []
+            save_cache(data)
+    except:
+        data = [] # 解析错误时安全回退
+
+# 3. 破除缓存陷阱：如果数据为空，或者只有 1-2 条（说明之前历史拉取失败），强制重试拉取
+if not data or len(data) <= 2:
+    history_data = init_today_history()
+    
+    # 只有当历史拉取真正成功（拿到了多条数据）时，才信任并覆盖 data
+    if history_data and len(history_data) > 2:
+        data = history_data
+        save_cache(data)
+    elif not data:
+        data = [] # 如果彻底失败且原本没数据，给个空列表保底
+
+# 4. 获取最新实时数据
 data, is_new, source = get_today_data()
 
 if not data:
-    st.error("❌ 无法获取数据")
+    st.error("❌ 所有数据源均不可用，请检查网络或稍后再试。")
     st.stop()
-
-current = data[-1]
-max_temp = max(x["temp"] for x in data)
-
-dt_current = pd.to_datetime(current["time"])
-formatted_time = dt_current.strftime("%Y年%m月%d日 %H:%M:%S")
-
-max_record = next(x for x in data if x["temp"] == max_temp)
-max_dt = pd.to_datetime(max_record["time"])
-max_time_str = max_dt.strftime("%H:%M:%S")
-
-last_dt = pd.to_datetime(current["time"])
-delay_min = (now_local() - last_dt).total_seconds() / 60
-is_delayed = delay_min > 10
 
 
 # ======================
