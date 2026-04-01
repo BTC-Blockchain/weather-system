@@ -19,7 +19,7 @@ st.set_page_config(page_title="METAR监控系统", layout="wide")
 # 2. 功能函数定义
 # =========================================================
 def now_local():
-"""获取北京时间 (UTC+8)"""
+# """获取北京时间 (UTC+8)"""
     return datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
 
 # =========================================================
