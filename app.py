@@ -337,6 +337,7 @@ def init_today_history():
 # ======================
 def get_today_data():
     data = load_cache()
+    data = existing_data if existing_data is not None else load_cache()
     is_new = False
     source = "CACHE"
 
@@ -476,36 +477,45 @@ def peak_probability(data):
 # ======================
 # 启动与防死锁缓存逻辑
 # ======================
-# 1. 加载本地缓存
-data = load_cache()
+# 1. 先尝试加载缓存
+initial_data = load_cache()
 
-# 2. 跨日清理机制：如果缓存里的最后一条数据不是今天的，清空它
-if data:
+# 2. 检查缓存是否有效/跨日
+if initial_data:
     try:
-        last_record_dt = datetime.strptime(data[-1]["time"], "%Y-%m-%d %H:%M")
-        if last_record_dt.date() != now_local().date():
-            data = []
-            save_cache(data)
+        last_dt = datetime.strptime(initial_data[-1]["time"], "%Y-%m-%d %H:%M")
+        if last_dt.date() != now_local().date():
+            initial_data = []
     except:
-        data = [] # 解析错误时安全回退
+        initial_data = []
 
-# 3. 破除缓存陷阱：如果数据为空，或者只有 1-2 条（说明之前历史拉取失败），强制重试拉取
-if not data or len(data) <= 2:
-    history_data = init_today_history()
+# 3. 如果没数据，拉取历史
+if not initial_data or len(initial_data) <= 2:
+    h_data = init_today_history()
+    if h_data:
+        initial_data = h_data
+        save_cache(initial_data)
+
+# 4. 基于历史数据，获取最新的那一条（传入 initial_data）
+data, is_new, source = get_today_data(existing_data=initial_data)
+
+# 5. 执行“变量计算逻辑” (max_temp 等)
+# === 新增：统一数据处理逻辑  ===
+if data and len(data) > 0:
+    # 提取温度列表用于计算
+    temp_list = [x["temp"] for x in data]
+    max_temp = max(temp_list)
     
-    # 只有当历史拉取真正成功（拿到了多条数据）时，才信任并覆盖 data
-    if history_data and len(history_data) > 2:
-        data = history_data
-        save_cache(data)
-    elif not data:
-        data = [] # 如果彻底失败且原本没数据，给个空列表保底
-
-# 4. 获取最新实时数据
-data, is_new, source = get_today_data()
-
-if not data:
-    st.error("❌ 所有数据源均不可用，请检查网络或稍后再试。")
-    st.stop()
+    # 找到最高温对应的时间
+    max_idx = temp_list.index(max_temp)
+    max_time_str = data[max_idx]["time"].split(" ")[1] # 只取 HH:M
+    
+    # 定义缺失的 formatted_time (取最后一条数据的时间)
+    formatted_time = data[-1]["time"]
+else:
+    max_temp = "--"
+    max_time_str = "无"
+    formatted_time = "未同步"
 
 
 # ======================
