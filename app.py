@@ -266,24 +266,24 @@ def init_today_history():
 # ==========================================
 # 💡 修复点：兼容整数(时间戳)和字符串两种时间格式
 # ==========================================
-                try:
-                    if isinstance(obs, int):
-                        # 如果 API 返回的是整数 (Unix 时间戳)
-                        dt = datetime.fromtimestamp(obs, timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
-                    else:
-                        # 如果 API 返回的是字符串文本
-                        dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=8)
-                except Exception as e:
-                    print(f"⚠️ 单条数据时间解析失败并跳过: {e}")
-                    continue 
-                # ==========================================
-                if dt.date() == now_local().date():
-                    data.append({
-                        "metar_time": dt.strftime("%d%H%M"),
-                        "time": dt.strftime("%Y-%m-%d %H:%M"),
-                        "temp": int(temp),
-                        "raw": raw
-                    })
+    try:
+        if isinstance(obs, int):
+            # 如果 API 返回的是整数 (Unix 时间戳)
+            dt = datetime.fromtimestamp(obs, timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
+        else:
+            # 如果 API 返回的是字符串文本
+            dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=8)
+    except Exception as e:
+        print(f"⚠️ 单条数据时间解析失败并跳过: {e}")
+        continue 
+    # ==========================================
+    if dt.date() == now_local().date():
+        data.append({
+            "metar_time": dt.strftime("%d%H%M"),
+            "time": dt.strftime("%Y-%m-%d %H:%M"),
+            "temp": int(temp),
+            "raw": raw
+        })
 
         if len(data) >= 1:
             data = sorted(data, key=lambda x: x["time"])
