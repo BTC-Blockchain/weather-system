@@ -364,7 +364,7 @@ def init_today_history():
 
             if dt.date() == now_loc.date():
                 data.append({
-                    "metar_time": f"{day}{hour}{minute}",
+                    "metar_time": f"{day}{hour}{minute}Z",
                     "time": dt.strftime("%Y-%m-%d %H:%M"),
                     "temp": temp,
                     "raw": line.strip()
@@ -409,7 +409,7 @@ def get_today_data():
             source = "REALTIME"
             # 提取报文中的原始时间字符串
             day_s, hour_s, min_s = t.groups()
-            metar_time = f"{day_s}{hour_s}{min_s}"
+            metar_time = f"{day_s}{hour_s}{min_s}Z"
             
             # 2. 核心修复：调用 utc_to_local 计算真实的观测时间（北京时间）
             # 这样即便你是 18:06 抓到的报文，只要报文显示 1000Z，记录就会是 18:00
@@ -911,7 +911,7 @@ with col3:
 <div class="custom-table-wrapper">
 <table class="sci-fi-table">
 <thead>
-<tr><th>观测时间</th><th>温度</th><th>原始报文时间</th></tr>
+<tr><th>观测时间</th><th>温度</th><th>原始时间戳 (UTC)</th></tr>
 </thead>
 <tbody>
 {rows_html}
