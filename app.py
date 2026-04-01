@@ -248,7 +248,7 @@ def init_today_history():
     print("🔍 进入 init_today_history 函数...")
     # 模拟浏览器请求头，增加成功率
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-    
+    source_name = "NONE" # 初始状态
     # --- 数据源 1：Aviation Weather ---
     try:
         url = "https://aviationweather.gov/api/data/metar"
@@ -290,7 +290,7 @@ def init_today_history():
             print("✅ 历史源1(Aviation Weather)抓取成功")
             print(f"✅ 抓取成功，获取到 {len(data)} 条历史记录")
             save_cache(data)
-            return data
+            return data, "Aviation Weather (官方源)" # 返回数据和来源
     except Exception as e:
         print(f"⚠️ 历史源1(Aviation Weather)抓取跳过: {e}")
 
@@ -344,13 +344,13 @@ def init_today_history():
             print("✅ 历史源2(Ogimet)抓取成功")
             print(f"✅ 抓取成功，获取到 {len(data)} 条历史记录")
             save_cache(data)
-            return data
+            return data, "Ogimet (备份源)" # 返回数据和来源
             
     except Exception as e:
         print(f"❌ 历史源2最终失败: {e}")
         # 这里会打印具体的错误原因
 
-    return load_cache()
+      return load_cache(), "Local Cache (缓存源)" # 如果都失败，返回缓存
 
 
 # ======================
@@ -516,18 +516,19 @@ is_delayed = False
 is_new = False
 source = "UNKNOWN"
 current = None # 初始设为 None
+history_source = "未触发补全" # 新增变量用于记录补全来源
 data = load_cache()
 
 # 重点修复：不再只判断“是否为空”，而是判断“数据够不够”
-# 只要少于 5 条，就认为历史数据补全失败，强制再运行一次
+# 只要少于 1 条，就认为历史数据补全失败，强制再运行一次
 if len(data) < 1:
     # 强制在控制台和网页同时输出，确保你能看到
     print(f"📡 [DEBUG] 当前缓存数据量 {len(data)} 条，开始执行 init_today_history...")
     st.toast("正在尝试补全今日历史报文...", icon="🔄")
-    data = init_today_history()
+    data, history_source = init_today_history() 
 
 # 获取实时数据
-data, is_new, source = get_today_data()
+data, is_new, realtime_source = get_today_data()
 
 # 检查最终结果
 if not data:
@@ -801,23 +802,19 @@ with col2:
 
     # 3. 核心 HTML 字符串 (注意：不要在 f-string 内部的样式里使用回车，保持紧凑)
     integrity_html = f"""
-    <div style="background:{status_bg}; border:1px solid {border_c}; border-radius:12px; padding:15px; min-height:228px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 12px rgba(0,170,255,0.1);">
-        <div style="font-size:30px; font-weight:bold; color:{status_color}; text-align:center; margin-bottom:10px;">
-            {status_text}
-        </div>
-        <div style="display:flex; justify-content:space-between; border-top:1px dashed rgba(0,170,255,0.2); padding-top:12px;">
-            <div style="text-align:left;">
+        <div style="background:{status_bg}; border:1px solid {border_c}; border-radius:12px; padding:15px; min-height:228px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 12px rgba(0,170,255,0.1);">
+            <div style="font-size:30px; font-weight:bold; color:{status_color}; text-align:center; margin-bottom:10px;">{status_text}</div>
+            <div style="font-size:12px; color:#666; text-align:center; margin-top:-5px;">历史补全源：{history_source}</div> 
+            <div style="display:flex; justify-content:space-between; border-top:1px dashed rgba(0,170,255,0.2); padding-top:12px;">
+                <div style="text-align:left;">
                 <span style="font-size:20px; color:#888;">捕获样本</span><br>
-                <span style="font-size:40px; color:#0077aa; font-weight:900;">{total_records}</span><span style="font-size:30px; color:#666;"> 条</span>
-            </div>
-            <div style="text-align:right;">
+                <span style="font-size:40px; color:#0077aa; font-weight:900;">{len(data)}</span><span style="font-size:30px; color:#666;"> 条</span></div>
+                <div style="text-align:right;">
                 <span style="font-size:20px; color:#888;">防御状态</span><br>
-                <span style="font-size:30px; color:{status_color}; font-weight:bold;">实时监控中 🛡️</span>
+                <span style="font-size:30px; color:{status_color}; font-weight:bold;">实时监控中 🛡️</span></div>
             </div>
         </div>
-    </div>
-    """
-
+        """
     st.markdown(integrity_html, unsafe_allow_html=True)
 
 
