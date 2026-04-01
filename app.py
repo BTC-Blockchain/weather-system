@@ -219,54 +219,52 @@ def save_cache(data):
 # 历史数据（双源修复版：增加反爬伪装与 503 错误拦截）
 # ======================
 def init_today_history():
-    # 修复点 1：增加浏览器 User-Agent 头，防止被服务器作为恶意爬虫拦截
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning) # 禁用SSL警告
+    
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
     }
+    
+    aviation_data = []
 
     # --- 数据源 1：Aviation Weather ---
     try:
-        url = "https://aviationweather.gov/api/data/metar"
-        params = {"ids": "ZSPD", "format": "json", "hours": 48}
-        # 发送请求时带上 headers
-        res = requests.get(url, params=params, headers=headers, timeout=5)
+        url = "https://aviationweather.gov/api/data/metar?ids=ZSPD&format=json&hours=48"
+        # 增加 verify=False 绕过证书阻拦，增加 timeout 到 10s
+        res = requests.get(url, headers=headers, timeout=10, verify=False)
         
-        # 确保服务器返回成功 (200 OK) 才进行 JSON 解析
         if res.status_code == 200:
             metars = res.json()
-            data = []
             for m in metars:
-                temp = m.get("temp") or m.get("temp_c")
+                temp = m.get("temp") if m.get("temp") is not None else m.get("temp_c")
                 raw = m.get("rawOb") or m.get("raw_text")
                 obs = m.get("obsTime") or m.get("observation_time")
 
-                if temp and obs:
+                if temp is not None and obs:
                     dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=8)
                     if dt.date() == now_local().date():
-                        data.append({
+                        aviation_data.append({
                             "metar_time": dt.strftime("%d%H%M"),
                             "time": dt.strftime("%Y-%m-%d %H:%M"),
                             "temp": int(temp),
                             "raw": raw
                         })
 
-            # 修复点 2：只要有数据就保存，不要硬性要求大于 5 条 (防止凌晨数据被丢弃)
-            if len(data) > 0:
-                data = sorted(data, key=lambda x: x["time"])
-                          
-                # 🚨 判断是否“覆盖从00点开始”
-                first_time = datetime.strptime(data[0]["time"], "%Y-%m-%d %H:%M")
-                now = now_local()
-            
-                # 如果当前时间已经 > 3点，但数据不是从凌晨开始 → 认为不完整
-                if now.hour >= 3 and first_time.hour > 1:
-                    st.toast("Aviation 数据不完整，切换 Ogimet", icon="⚠️")
+            if len(aviation_data) > 0:
+                aviation_data = sorted(aviation_data, key=lambda x: x["time"])
+                first_time = datetime.strptime(aviation_data[0]["time"], "%Y-%m-%d %H:%M")
+                
+                # 如果数据不完整，提示去 Ogimet 补充，但【保留已获取的 aviation_data】
+                if now_local().hour >= 3 and first_time.hour > 1:
+                    st.toast("Aviation 数据不完整，尝试使用 Ogimet 补充", icon="🔄")
                 else:
-                    return data   
+                    return aviation_data
         else:
-            st.toast(f"Aviation 源异常: HTTP {res.status_code}", icon="⚠️")
+            st.toast(f"Aviation 状态码异常: {res.status_code}", icon="⚠️")
     except Exception as e:
-        st.toast(f"Aviation 源请求超时或报错", icon="⚠️")
+        st.toast(f"Aviation 请求异常: 正在重试备用源...", icon="⚠️")
 
     # --- 数据源 2：Ogimet ---
     try:
@@ -277,59 +275,46 @@ def init_today_history():
 
         url = f"https://www.ogimet.com/display_metars2.php?lang=en&lugar=ZSPD&tipo=ALL&ord=REV&nil=NO&fmt=txt&ano={utc_start.year}&mes={utc_start.month:02d}&day={utc_start.day:02d}&hora={utc_start.hour:02d}&anof={utc_end.year}&mesf={utc_end.month:02d}&dayf={utc_end.day:02d}&horaf={utc_end.hour:02d}&minf=59"
         
-        # 发送请求时带上 headers
-        res = requests.get(url, headers=headers, timeout=5)
+        res = requests.get(url, headers=headers, timeout=10, verify=False)
         
-        # 修复点 3：专门防御 503 Backend.max_conn reached 错误
-        # 只有在状态码为 200，且返回文本中不包含 HTML 错误页时，才执行解析
         if res.status_code == 200 and "<html" not in res.text.lower():
-            text = res.text
-            lines = text.split("\n")
-
-            data = []
+            lines = res.text.split("\n")
+            ogimet_data = []
             for line in lines:
-                if "ZSPD" not in line:
-                    continue
-
+                if "ZSPD" not in line: continue
                 t = re.search(r'(\d{2})(\d{2})(\d{2})Z', line)
                 temp_match = re.search(r' (M?\d{2})/(M?\d{2}) ', line)
-
-                if not t or not temp_match:
-                    continue
+                if not t or not temp_match: continue
 
                 day, hour, minute = t.groups()
                 temp = int(temp_match.group(1).replace("M", "-"))
                 dt = utc_to_local(day, hour, minute)
 
                 if dt.date() == now_loc.date():
-                    data.append({
-                        "metar_time": f"{day}{hour}{minute}",
-                        "time": dt.strftime("%Y-%m-%d %H:%M"),
-                        "temp": temp,
-                        "raw": line.strip()
+                    ogimet_data.append({
+                        "metar_time": f"{day}{hour}{minute}", "time": dt.strftime("%Y-%m-%d %H:%M"),
+                        "temp": temp, "raw": line.strip()
                     })
 
-            if len(data) > 0:
-                # 去重（按时间）
+            if len(ogimet_data) > 0:
+                # 合并两个源的数据并去重（最强融合技！）
+                combined = ogimet_data + aviation_data
                 seen = set()
                 unique = []
-                for d in data:
+                for d in combined:
                     if d["time"] not in seen:
                         seen.add(d["time"])
                         unique.append(d)
+                return sorted(unique, key=lambda x: x["time"])
+    except:
+        pass
 
-                data = sorted(unique, key=lambda x: datetime.strptime(x["time"], "%Y-%m-%d %H:%M"))
-                return data
-        else:
-            if "<html" in res.text.lower():
-                st.toast("Ogimet 源触发反爬/限流，已拦截 HTML 乱码", icon="🛡️")
-            else:
-                st.toast(f"Ogimet 源异常: HTTP {res.status_code}", icon="⚠️")
-    except Exception as e:
-        st.toast(f"Ogimet 源请求超时或报错", icon="⚠️")
+    # 🚨 终极防线：如果 Ogimet 也挂了，但 Aviation 抓到了不完整数据，直接用！绝对不扔！
+    if len(aviation_data) > 0:
+        st.toast("备用源失效，已启用不完整的 Aviation 历史数据进行兜底！", icon="🛡️")
+        return aviation_data
 
-    # 如果运行到这里，说明双源全部失效
-    st.toast("历史数据双节点拉取失败，系统将依赖实时数据逐渐重建", icon="🚨")
+    st.toast("历史数据源全面熔断，等待实时数据重建", icon="🚨")
     return []
 
 # ======================
@@ -485,44 +470,39 @@ def peak_probability(data):
     return min(round(score), 100)
 
 # ======================
-# 启动与防死锁缓存逻辑
+# 启动与单向数据流逻辑 (彻底修复覆写 Bug)
 # ======================
-# 1. 先尝试加载缓存
 initial_data = load_cache()
 
-# 2. 检查缓存是否有效/跨日
 if initial_data:
     try:
-        last_dt = datetime.strptime(initial_data[-1]["time"], "%Y-%m-%d %H:%M")
-        if last_dt.date() != now_local().date():
+        if datetime.strptime(initial_data[-1]["time"], "%Y-%m-%d %H:%M").date() != now_local().date():
             initial_data = []
     except:
         initial_data = []
 
-# 3. 如果没数据，拉取历史
 if not initial_data or len(initial_data) <= 2:
     h_data = init_today_history()
-    if h_data:
+    if h_data and len(h_data) > len(initial_data):
         initial_data = h_data
         save_cache(initial_data)
 
-# 4. 基于历史数据，获取最新的那一条（传入 initial_data）
+# ✅ 全局唯一一次调用，绝对不可在下方重复写！
 data, is_new, source = get_today_data(existing_data=initial_data)
 
-# 5. 执行“变量计算逻辑” (max_temp 等)
-# === 确保下面这一行没有多余的空格，与上面的 data 赋值对齐 ===
+# === 计算核心环境变量 ===
 if data and len(data) > 0:
-    # 提取温度列表用于计算
     temp_list = [x["temp"] for x in data]
     max_temp = max(temp_list)
-    # 找到最高温对应的时间
     max_idx = temp_list.index(max_temp)
     max_time_str = data[max_idx]["time"].split(" ")[1]
     formatted_time = data[-1]["time"]
+    current = data[-1]  # 确保 current 对象正确绑定
 else:
     max_temp = "--"
     max_time_str = "无"
     formatted_time = "未同步"
+    current = {"temp": "--", "time": "无数据", "raw": "等待获取..."}
 
 
 # ======================
@@ -549,30 +529,21 @@ if st.session_state.audio_unlocked and is_new:
 
 # 数据来源
 # --- 修复 delay_info 报错的关键防御逻辑 ---
-
-data, is_new, source = get_today_data()
-
-# 1. 初始化默认值，防止变量未定义
+# ======================
+# 🚨 延迟计算与防御
+# ======================
 delay_min = 0 
-last_dt = now_local() # 默认设为当前时间，即延迟为0
+last_dt = now_local()
 
 if data and len(data) > 0:
-    # 2. 只有在 data 有数据时才进行计算
-    current = data[-1]
     try:
-        # 尝试解析最后一条数据的时间
         last_dt = pd.to_datetime(current["time"])
-        # 计算延迟分钟数
         delay_min = (now_local() - last_dt).total_seconds() / 60
     except Exception as e:
-        # 如果时间格式解析失败，记录错误并保持默认值
         st.toast(f"时间解析异常: {e}", icon="⚠️")
 else:
-    # 3. 如果彻底没数据，为了防止后续页面渲染崩溃，给 current 一个占位符
-    current = {"temp": "--", "time": "无数据", "raw": "等待获取..."}
     st.warning("📡 正在等待数据源响应，请稍后...")
 
-# 4. 现在生成 delay_info 字符串是安全的
 delay_info = f"**{int(delay_min)}** 分钟" 
 is_delayed = delay_min > 10
 
