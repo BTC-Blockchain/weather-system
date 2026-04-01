@@ -272,7 +272,7 @@ def init_today_history():
                         "raw": raw
                     })
 
-        if len(data) ≥ 1:
+        if len(data) >= 1:
             data = sorted(data, key=lambda x: x["time"])
             print("✅ 历史源1(Aviation Weather)抓取成功")
             print(f"✅ 抓取成功，获取到 {len(data)} 条历史记录")
@@ -326,7 +326,7 @@ def init_today_history():
                     "raw": line.strip()
                 })
 
-        if len(data) ≥ 1:
+        if len(data) >= 1:
             data = sorted(data, key=lambda x: x["time"])
             print("✅ 历史源2(Ogimet)抓取成功")
             print(f"✅ 抓取成功，获取到 {len(data)} 条历史记录")
