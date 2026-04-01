@@ -360,32 +360,45 @@ def get_today_data():
     data = load_cache()
     is_new = False
     source = "CACHE"
-
+# 尝试从 NOAA 获取实时数据
     try:
         url = "https://tgftp.nws.noaa.gov/data/observations/metar/stations/ZSPD.TXT"
         txt = requests.get(url, timeout=2).text
-        metar = txt.strip().split("\n")[1]
+        lines = txt.strip().split("\n")
+        if len(lines) < 2: return data, False, "CACHE"
+        
+        metar = lines[1]
 
-        t = re.search(r'(\d{6})Z', metar)
+        # 1. 匹配 6 位时间戳 (前2位日，中2位时，后2位分)
+        t = re.search(r'(\d{2})(\d{2})(\d{2})Z', metar)
         temp_match = re.search(r' (M?\d{2})/(M?\d{2}) ', metar)
 
         if t and temp_match:
             source = "REALTIME"
-            metar_time = t.group(1)
+            # 提取报文中的原始时间字符串
+            day_s, hour_s, min_s = t.groups()
+            metar_time = f"{day_s}{hour_s}{min_s}"
+            
+            # 2. 核心修复：调用 utc_to_local 计算真实的观测时间（北京时间）
+            # 这样即便你是 18:06 抓到的报文，只要报文显示 1000Z，记录就会是 18:00
+            obs_dt = utc_to_local(day_s, hour_s, min_s)
+            formatted_obs_time = obs_dt.strftime("%Y-%m-%d %H:%M")
+
             temp = int(temp_match.group(1).replace("M", "-"))
 
+            # 3. 检查是否为新报文
             if len(data) == 0 or data[-1]["metar_time"] != metar_time:
                 is_new = True
                 data.append({
                     "metar_time": metar_time,
-                    "time": now_local().strftime("%Y-%m-%d %H:%M"),
+                    "time": formatted_obs_time,  # 使用计算出的精准观测时间
                     "temp": temp,
                     "raw": metar
                 })
                 save_cache(data)
 
-    except:
-        pass
+    except Exception as e:
+        print(f"⚠️ 实时抓取异常: {e}")
 
     return data, is_new, source
 # ======================
