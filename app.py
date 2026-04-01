@@ -449,31 +449,26 @@ def peak_probability(data):
     return min(round(score), 100)
 
 # ======================
-# 启动
+# 启动 (彻底修复版)
 # ======================
 data = load_cache()
-if not data:
+
+# 重点修复：不再只判断“是否为空”，而是判断“数据够不够”
+# 只要少于 5 条，就认为历史数据补全失败，强制再运行一次
+if len(data) < 5:
+    # 强制在控制台和网页同时输出，确保你能看到
+    print(f"📡 [DEBUG] 当前缓存数据量 {len(data)} 条，开始执行 init_today_history...")
+    st.toast("正在尝试补全今日历史报文...", icon="🔄")
     data = init_today_history()
 
+# 获取实时数据
 data, is_new, source = get_today_data()
 
+# 检查最终结果
 if not data:
-    st.error("❌ 无法获取数据")
+    st.error("❌ 无法获取任何数据，请检查网络连接或 API 状态")
+    print("❌ [ERROR] 最终数据列表为空！")
     st.stop()
-
-current = data[-1]
-max_temp = max(x["temp"] for x in data)
-
-dt_current = pd.to_datetime(current["time"])
-formatted_time = dt_current.strftime("%Y年%m月%d日 %H:%M:%S")
-
-max_record = next(x for x in data if x["temp"] == max_temp)
-max_dt = pd.to_datetime(max_record["time"])
-max_time_str = max_dt.strftime("%H:%M:%S")
-
-last_dt = pd.to_datetime(current["time"])
-delay_min = (now_local() - last_dt).total_seconds() / 60
-is_delayed = delay_min > 10
 
 
 # ======================
