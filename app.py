@@ -253,7 +253,6 @@ def init_today_history():
             # 修复点 2：只要有数据就保存，不要硬性要求大于 5 条 (防止凌晨数据被丢弃)
             if len(data) > 0:
                 data = sorted(data, key=lambda x: x["time"])
-                save_cache(data)
                 return data
         else:
             st.toast(f"Aviation 源异常: HTTP {res.status_code}", icon="⚠️")
@@ -303,7 +302,6 @@ def init_today_history():
 
             if len(data) > 0:
                 data = sorted(data, key=lambda x: x["time"])
-                save_cache(data)
                 return data
         else:
             if "<html" in res.text.lower():
