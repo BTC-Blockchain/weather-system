@@ -335,12 +335,22 @@ def init_today_history():
 # ======================
 # 实时数据
 # ======================
-def get_today_data():
-    data = load_cache()
-    data = existing_data if existing_data is not None else load_cache()
-    is_new = False
-    source = "CACHE"
+# 修改点：增加 existing_data 参数，并给它一个默认值 None
+def get_today_data(existing_data=None): 
+    """
+    获取最新 METAR 数据。
+    如果传入了 existing_data，则直接在基础上追加；
+    如果没有传入，则尝试从缓存 load_cache 加载。
+    """
+    # 核心逻辑修改：判断是使用传入的数据还是加载缓存
+    if existing_data is not None:
+        data = existing_data
+        source = "LIVE_SYNC" # 标记为同步模式
+    else:
+        data = load_cache()
+        source = "CACHE"
 
+    is_new = False
     try:
         url = "https://tgftp.nws.noaa.gov/data/observations/metar/stations/ZSPD.TXT"
         txt = requests.get(url, timeout=2).text
