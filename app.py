@@ -860,7 +860,6 @@ st.markdown(settlement_html, unsafe_allow_html=True)
 
 # 4. 预览窗口
 with st.expander("👁️ 快速预览 Wunderground 表格 (若加载失败请点击上方按钮)"):
-    import streamlit.components.v1 as components
-    components.iframe(wunderground_url, height=600, scrolling=True)
+    st.iframe(wunderground_url, height=600, scrolling=True)
 
 
