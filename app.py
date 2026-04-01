@@ -249,6 +249,7 @@ def init_today_history():
     # 模拟浏览器请求头，增加成功率
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     source_name = "NONE" # 初始状态
+    
     # --- 数据源 1：Aviation Weather ---
     try:
         url = "https://aviationweather.gov/api/data/metar"
@@ -263,9 +264,9 @@ def init_today_history():
             obs = m.get("obsTime") or m.get("observation_time")
 
             if temp is not None and obs:
-# ==========================================
-# 💡 修复点：兼容整数(时间戳)和字符串两种时间格式
-# ==========================================
+                # ==========================================
+                # 💡 修复点：兼容整数(时间戳)和字符串两种时间格式
+                # ==========================================
                 try:
                     if isinstance(obs, int):
                         # 如果 API 返回的是整数 (Unix 时间戳)
@@ -273,17 +274,18 @@ def init_today_history():
                     else:
                         # 如果 API 返回的是字符串文本
                         dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=8)
-    except Exception as e:
-        print(f"⚠️ 单条数据时间解析失败并跳过: {e}")
-        continue 
-    # ==========================================
-    if dt.date() == now_local().date():
-        data.append({
-            "metar_time": dt.strftime("%d%H%M"),
-            "time": dt.strftime("%Y-%m-%d %H:%M"),
-            "temp": int(temp),
-            "raw": raw
-        })
+                    
+                    # 只有时间解析成功，才进行日期判断和添加数据
+                    if dt.date() == now_local().date():
+                        data.append({
+                            "metar_time": dt.strftime("%d%H%M"),
+                            "time": dt.strftime("%Y-%m-%d %H:%M"),
+                            "temp": int(temp),
+                            "raw": raw
+                        })
+                except Exception as e:
+                    print(f"⚠️ 单条数据时间解析失败并跳过: {e}")
+                    continue 
 
         if len(data) >= 1:
             data = sorted(data, key=lambda x: x["time"])
@@ -291,6 +293,7 @@ def init_today_history():
             print(f"✅ 抓取成功，获取到 {len(data)} 条历史记录")
             save_cache(data)
             return data, "Aviation Weather (官方源)" # 返回数据和来源
+            
     except Exception as e:
         print(f"⚠️ 历史源1(Aviation Weather)抓取跳过: {e}")
 
@@ -299,18 +302,16 @@ def init_today_history():
         now_loc = now_local()
         
         # 【修改点 1：安全构造北京时间凌晨】
-        # 直接通过 timedelta 计算，避免手动填入 day=31 这种可能溢出的数字
         local_start = now_loc.replace(hour=0, minute=0, second=0, microsecond=0)
         
         # 【修改点 2：安全构造 UTC 时间】
-        # 减去 8 小时会自动处理跨月、跨年（例如从 4月1日 变成 3月31日）
         utc_start = local_start - timedelta(hours=8)
         
         # 结束时间
         from datetime import timezone
         utc_end = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        # URL 拼接保持不变，此时的 utc_start.day 已经是安全的了
+        # URL 拼接
         url = f"https://www.ogimet.com/display_metars2.php?lang=en&lugar=ZSPD&tipo=ALL&ord=REV&nil=NO&fmt=txt&ano={utc_start.year}&mes={utc_start.month:02d}&day={utc_start.day:02d}&hora={utc_start.hour:02d}&anof={utc_end.year}&mesf={utc_end.month:02d}&dayf={utc_end.day:02d}&horaf={utc_end.hour:02d}&minf=59"
         
         print(f"📡 正在尝试 Ogimet URL: {url}")
@@ -328,7 +329,6 @@ def init_today_history():
             temp = int(temp_match.group(1).replace("M", "-"))
             
             # 【修改点 3：修复 utc_to_local 内部可能的跨月逻辑】
-            # 确保 utc_to_local 函数能正确处理“报文是31日，现在是1日”的情况
             dt = utc_to_local(day, hour, minute)
 
             if dt.date() == now_loc.date():
@@ -344,13 +344,12 @@ def init_today_history():
             print("✅ 历史源2(Ogimet)抓取成功")
             print(f"✅ 抓取成功，获取到 {len(data)} 条历史记录")
             save_cache(data)
-            return data, "Ogimet (备份源)" # 返回数据和来源
+            return data, "Ogimet (备份源)"
             
     except Exception as e:
         print(f"❌ 历史源2最终失败: {e}")
-        # 这里会打印具体的错误原因
 
-      return load_cache(), "Local Cache (缓存源)" # 如果都失败，返回缓存
+    return load_cache(), "Local Cache (缓存源)" # 如果都失败，返回缓存
 
 
 # ======================
