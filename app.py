@@ -253,9 +253,23 @@ def init_today_history():
     try:
         url = "https://aviationweather.gov/api/data/metar"
         params = {"ids": "ZSPD", "format": "json", "hours": 48}
-        res = requests.get(url, params=params, headers=headers, timeout=15) # 增加超时
+        res = requests.get(url, params=params, headers=headers, timeout=15)
+        
+        # 🔍 阶段一分析：HTTP 层面
+        print(f"🔍 [源1分析] HTTP 状态码: {res.status_code}")
+        if res.status_code != 200:
+            print(f"❌ [源1分析] 请求异常，返回内容片段: {res.text[:200]}")
+            
         metars = res.json()
+        print(f"🔍 [源1分析] JSON 解析成功，共获取到 {len(metars)} 条基础数据")
+        
+        if len(metars) > 0:
+            # 打印第一条数据样本，用于排查 API 的字段名是否发生了官方变动
+            print(f"🔍 [源1分析] 数据样本(首条): {metars[0]}") 
 
+        # 🔍 阶段二分析：数据过滤漏斗统计
+        stats = {"total": len(metars), "missing_fields": 0, "time_error": 0, "not_today": 0, "valid": 0}
+        
         data = []
         for m in metars:
             temp = m.get("temp") or m.get("temp_c")
@@ -263,36 +277,50 @@ def init_today_history():
             obs = m.get("obsTime") or m.get("observation_time")
 
             if temp is not None and obs:
-# ==========================================
-# 💡 修复点：兼容整数(时间戳)和字符串两种时间格式
-# ==========================================
                 try:
                     if isinstance(obs, int):
-                        # 如果 API 返回的是整数 (Unix 时间戳)
                         dt = datetime.fromtimestamp(obs, timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
                     else:
-                        # 如果 API 返回的是字符串文本
                         dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=8)
                 except Exception as e:
-                    print(f"⚠️ 单条数据时间解析失败并跳过: {e}")
+                    stats["time_error"] += 1
+                    print(f"⚠️ 单条数据时间解析失败并跳过: {e} (原始时间: {obs})")
                     continue 
-                # ==========================================
+                
+                # 时间匹配检查
                 if dt.date() == now_local().date():
+                    stats["valid"] += 1
                     data.append({
                         "metar_time": dt.strftime("%d%H%M"),
                         "time": dt.strftime("%Y-%m-%d %H:%M"),
                         "temp": int(temp),
                         "raw": raw
                     })
+                else:
+                    stats["not_today"] += 1
+            else:
+                stats["missing_fields"] += 1
 
+        print(f"📊 [源1分析] 数据过滤漏斗统计: {stats}")
+        
         if len(data) >= 1:
             data = sorted(data, key=lambda x: x["time"])
             print("✅ 历史源1(Aviation Weather)抓取成功")
-            print(f"✅ 抓取成功，获取到 {len(data)} 条历史记录")
+            print(f"✅ 获取到 {len(data)} 条属于当天的历史记录")
             save_cache(data)
             return data
+        else:
+            # 🔍 阶段三分析：自动诊断失败根源
+            print("❌ [源1分析] 最终录入系统的有效数据为 0。原因推断如下：")
+            if stats["total"] == 0:
+                print("   👉 结论: API 返回为空数组，可能目标站点(ZSPD)暂无数据或查询参数已失效。")
+            elif stats["missing_fields"] > 0 and stats["valid"] == 0:
+                print("   👉 结论: 数据结构异常，缺失 temp 或 obs 字段，Aviation Weather API 可能已更改返回体格式。")
+            elif stats["not_today"] == stats["total"] - stats["missing_fields"] - stats["time_error"]:
+                print("   👉 结论: 抓取到了数据，但经过北京时间换算后，全部不属于'今天'。请检查 API 的 hours 逻辑或时区转换是否有偏差。")
+
     except Exception as e:
-        print(f"⚠️ 历史源1(Aviation Weather)抓取跳过: {e}")
+        print(f"⚠️ 历史源1(Aviation Weather)抓取彻底崩溃: {e}")
 
     # --- 数据源 2：Ogimet (重点修改区域) ---
     try:
@@ -523,7 +551,7 @@ data = load_cache()
 if len(data) < 1:
     # 强制在控制台和网页同时输出，确保你能看到
     print(f"📡 [DEBUG] 当前缓存数据量 {len(data)} 条，开始执行 init_today_history...")
-    st.toast("正在尝试补全今日历史报文...", icon="🔄")
+    st.toast("正在尝试补全今日历史报文...", icon="🔄", duration=10)
     data = init_today_history()
 
 # 获取实时数据
@@ -569,14 +597,14 @@ if st.button("🔊 启用声音提醒"):
     st.markdown(f'<audio autoplay><source src="{test_audio_url}" type="audio/ogg"></audio>', unsafe_allow_html=True)
     st.success("✅ 声音提醒已解锁！您刚才应该已经听到了一声测试的“滴”声。")
 
-# ✅ 直接利用你原本代码中完美的 is_new 变量，最精准！
+# ✅ 直接利用原本代码中完美的 is_new 变量，最精准！
 if st.session_state.audio_unlocked and is_new:
     # 加上时间戳防止浏览器缓存，确保每次新数据都响
     alert_url = f"https://actions.google.com/sounds/v1/alarms/beep_short.ogg?t={datetime.now(timezone.utc).timestamp()}"
     st.markdown(f'<audio autoplay><source src="{alert_url}" type="audio/ogg"></audio>', unsafe_allow_html=True)
     
     # 加上一个视觉弹窗，做双重保障
-    st.toast("🔔 抓取到新 METAR 数据，已触发声音警报！", icon="🔊")
+    st.toast("🔔 抓取到新 METAR 数据，已触发声音警报！", icon="🔊", duration=10)
 
 # 数据来源
 delay_info = f"**{int(delay_min)}** 分钟" 
