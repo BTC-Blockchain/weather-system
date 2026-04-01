@@ -509,6 +509,26 @@ if not data:
     print("❌ [ERROR] 最终数据列表为空！")
     st.stop()
 
+# ======================
+# 💡 修复重点：计算所有必须的 UI 变量
+# ======================
+current = data[-1]
+formatted_time = current["time"]
+
+# 计算最高温度及其时间
+max_record = max(data, key=lambda x: x["temp"])
+max_temp = max_record["temp"]
+max_time_str = max_record["time"].split(" ")[1] if " " in max_record["time"] else max_record["time"]
+
+# 计算延迟时间
+try:
+    last_dt = datetime.strptime(formatted_time, "%Y-%m-%d %H:%M")
+    delay_min = (now_local() - last_dt).total_seconds() / 60
+    # 如果超过 40 分钟未更新，视为延迟（标准 METAR 通常30分钟更新）
+    is_delayed = delay_min > 40  
+except Exception as e:
+    delay_min = 0
+    is_delayed = False
 
 # ======================
 # 🔊 声音系统（终极修复版）
