@@ -216,90 +216,97 @@ def save_cache(data):
         json.dump(data, f)
 
 # ======================
-# 历史数据（双源修复版：精准拉取本地凌晨数据）
+# 历史数据（双源修复版：增加反爬伪装与 503 错误拦截）
 # ======================
 def init_today_history():
+    # 修复点 1：增加浏览器 User-Agent 头，防止被服务器作为恶意爬虫拦截
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+
     # --- 数据源 1：Aviation Weather ---
     try:
         url = "https://aviationweather.gov/api/data/metar"
-        # 优化点 1：将抓取时长增加到 48 小时。
-        # 这样无论当前是下午还是晚上，都能确保覆盖到"昨天"的 UTC 时间，从而不漏掉本地今天凌晨的数据。
         params = {"ids": "ZSPD", "format": "json", "hours": 48}
-        res = requests.get(url, params=params, timeout=3)
-        metars = res.json()
+        # 发送请求时带上 headers
+        res = requests.get(url, params=params, headers=headers, timeout=5)
+        
+        # 确保服务器返回成功 (200 OK) 才进行 JSON 解析
+        if res.status_code == 200:
+            metars = res.json()
+            data = []
+            for m in metars:
+                temp = m.get("temp") or m.get("temp_c")
+                raw = m.get("rawOb") or m.get("raw_text")
+                obs = m.get("obsTime") or m.get("observation_time")
 
-        data = []
-        for m in metars:
-            temp = m.get("temp") or m.get("temp_c")
-            raw = m.get("rawOb") or m.get("raw_text")
-            obs = m.get("obsTime") or m.get("observation_time")
+                if temp and obs:
+                    dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=8)
+                    if dt.date() == now_local().date():
+                        data.append({
+                            "metar_time": dt.strftime("%d%H%M"),
+                            "time": dt.strftime("%Y-%m-%d %H:%M"),
+                            "temp": int(temp),
+                            "raw": raw
+                        })
 
-            if temp and obs:
-                dt = datetime.strptime(obs, "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=8)
-                # 严格过滤，只保留本地当天的记录
-                if dt.date() == now_local().date():
-                    data.append({
-                        "metar_time": dt.strftime("%d%H%M"),
-                        "time": dt.strftime("%Y-%m-%d %H:%M"),
-                        "temp": int(temp),
-                        "raw": raw
-                    })
-
-        if len(data) > 5:
-            data = sorted(data, key=lambda x: x["time"])
-            save_cache(data)
-            return data
-    except:
-        pass
+            # 修复点 2：只要有数据就保存，不要硬性要求大于 5 条 (防止凌晨数据被丢弃)
+            if len(data) > 0:
+                data = sorted(data, key=lambda x: x["time"])
+                save_cache(data)
+                return data
+    except Exception as e:
+        pass # 如果源 1 崩溃，静默进入源 2
 
     # --- 数据源 2：Ogimet ---
     try:
         now_loc = now_local()
-        # 优化点 2：明确获取本地当天的凌晨 00:00
         local_start = datetime(now_loc.year, now_loc.month, now_loc.day, 0, 0)
-        # 转换为 Ogimet 需要的 UTC 时间（即前一天的 16:00 UTC）
         utc_start = local_start - timedelta(hours=8)
-        
-        # 结束时间直接设为当前的 UTC 时间即可
         utc_end = datetime.utcnow()
 
-        # 将正确转换后的 UTC 年/月/日/时 填入 URL 
         url = f"https://www.ogimet.com/display_metars2.php?lang=en&lugar=ZSPD&tipo=ALL&ord=REV&nil=NO&fmt=txt&ano={utc_start.year}&mes={utc_start.month:02d}&day={utc_start.day:02d}&hora={utc_start.hour:02d}&anof={utc_end.year}&mesf={utc_end.month:02d}&dayf={utc_end.day:02d}&horaf={utc_end.hour:02d}&minf=59"
         
-        text = requests.get(url, timeout=3).text
-        lines = text.split("\n")
+        # 发送请求时带上 headers
+        res = requests.get(url, headers=headers, timeout=5)
+        
+        # 修复点 3：专门防御 503 Backend.max_conn reached 错误
+        # 只有在状态码为 200，且返回文本中不包含 HTML 错误页时，才执行解析
+        if res.status_code == 200 and "<html" not in res.text.lower():
+            text = res.text
+            lines = text.split("\n")
 
-        data = []
-        for line in lines:
-            if "ZSPD" not in line:
-                continue
+            data = []
+            for line in lines:
+                if "ZSPD" not in line:
+                    continue
 
-            t = re.search(r'(\d{2})(\d{2})(\d{2})Z', line)
-            temp_match = re.search(r' (M?\d{2})/(M?\d{2}) ', line)
+                t = re.search(r'(\d{2})(\d{2})(\d{2})Z', line)
+                temp_match = re.search(r' (M?\d{2})/(M?\d{2}) ', line)
 
-            if not t or not temp_match:
-                continue
+                if not t or not temp_match:
+                    continue
 
-            day, hour, minute = t.groups()
-            temp = int(temp_match.group(1).replace("M", "-"))
-            dt = utc_to_local(day, hour, minute)
+                day, hour, minute = t.groups()
+                temp = int(temp_match.group(1).replace("M", "-"))
+                dt = utc_to_local(day, hour, minute)
 
-            # 同样严格过滤本地当天数据
-            if dt.date() == now_loc.date():
-                data.append({
-                    "metar_time": f"{day}{hour}{minute}",
-                    "time": dt.strftime("%Y-%m-%d %H:%M"),
-                    "temp": temp,
-                    "raw": line.strip()
-                })
+                if dt.date() == now_loc.date():
+                    data.append({
+                        "metar_time": f"{day}{hour}{minute}",
+                        "time": dt.strftime("%Y-%m-%d %H:%M"),
+                        "temp": temp,
+                        "raw": line.strip()
+                    })
 
-        if len(data) > 5:
-            data = sorted(data, key=lambda x: x["time"])
-            save_cache(data)
-            return data
-    except:
+            if len(data) > 0:
+                data = sorted(data, key=lambda x: x["time"])
+                save_cache(data)
+                return data
+    except Exception as e:
         pass
 
+    # 如果两个源都彻底失败，尝试加载本地旧缓存
     return load_cache()
 
 # ======================
