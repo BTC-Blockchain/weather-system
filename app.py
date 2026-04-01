@@ -516,7 +516,35 @@ if st.session_state.audio_unlocked and is_new:
     st.toast("🔔 抓取到新 METAR 数据，已触发声音警报！", icon="🔊")
 
 # 数据来源
+# --- 修复 delay_info 报错的关键防御逻辑 ---
+
+data, is_new, source = get_today_data()
+
+# 1. 初始化默认值，防止变量未定义
+delay_min = 0 
+last_dt = now_local() # 默认设为当前时间，即延迟为0
+
+if data and len(data) > 0:
+    # 2. 只有在 data 有数据时才进行计算
+    current = data[-1]
+    try:
+        # 尝试解析最后一条数据的时间
+        last_dt = pd.to_datetime(current["time"])
+        # 计算延迟分钟数
+        delay_min = (now_local() - last_dt).total_seconds() / 60
+    except Exception as e:
+        # 如果时间格式解析失败，记录错误并保持默认值
+        st.toast(f"时间解析异常: {e}", icon="⚠️")
+else:
+    # 3. 如果彻底没数据，为了防止后续页面渲染崩溃，给 current 一个占位符
+    current = {"temp": "--", "time": "无数据", "raw": "等待获取..."}
+    st.warning("📡 正在等待数据源响应，请稍后...")
+
+# 4. 现在生成 delay_info 字符串是安全的
 delay_info = f"**{int(delay_min)}** 分钟" 
+is_delayed = delay_min > 10
+
+
 space = "&nbsp;" * 80
 
 if source == "REALTIME":
