@@ -623,22 +623,33 @@ try:
     pm_api = PolymarketAPI()
 
 # 2. 调度缓存的市场发现逻辑
-    token_map, all_sh_titles = fetch_cached_token_map(search_date)
+#    token_map, all_sh_titles = fetch_cached_token_map(search_date)
+    # 调用新的侦听模式
+    raw_sh_data = pm_api.get_shanghai_temp_markets(search_date)
+
+    with st.expander("🚨 原始数据侦听器 (Raw Data Sniffer)"):
+        if not raw_sh_data:
+            st.error("💔 甚至连 'Shanghai' 这个词都没在 200 条数据中找到。")
+            st.write("这说明该市场可能不在 CLOB 订单簿中，或者其 API 路径不同。")
+        else:
+            st.success(f"找到了 {len(raw_sh_data)} 条包含 'Shanghai' 的原始数据！")
+            for item in raw_sh_data:
+                st.json(item) # <--- 仔细看这里的 "title" 或 "description"
 
 # 【调试代码 1】: 在 UI 上方展示发现的 Token 映射情况（排查对齐问题）
-    with st.expander("🛠️ 市场自动发现调试器"):
-        st.write(f"当前系统生成的搜索日期: `{search_date}`")
-        if not token_map:
-            st.error("未发现完全匹配的市场。")
-            if all_sh_titles:
-                st.write("但在 Polymarket 上发现了以下上海合约，请核对日期格式：")
-                for t in all_sh_titles:
-                    st.code(t) # 这样你会看到到底是 "Apr 3" 还是 "April 3"
-            else:
-                st.info("Polymarket 目前似乎没有挂出任何上海相关的活跃合约。")
-        else:
-            st.success("✅ 匹配成功！")
-            st.json(token_map)
+#    with st.expander("🛠️ 市场自动发现调试器"):
+#        st.write(f"当前系统生成的搜索日期: `{search_date}`")
+#        if not token_map:
+#            st.error("未发现完全匹配的市场。")
+#            if all_sh_titles:
+#                st.write("但在 Polymarket 上发现了以下上海合约，请核对日期格式：")
+#                for t in all_sh_titles:
+#                    st.code(t) # 这样你会看到到底是 "Apr 3" 还是 "April 3"
+#            else:
+#                st.info("Polymarket 目前似乎没有挂出任何上海相关的活跃合约。")
+#        else:
+#            st.success("✅ 匹配成功！")
+#            st.json(token_map)
 
 # 3. 实时价格抓取 (不缓存价格，因为价格秒变)
     real_market_prices = {}
