@@ -11,7 +11,7 @@ class PolymarketAPI:
         self.book_url = "https://clob.polymarket.com/book"
         self.search_url = "https://clob.polymarket.com/markets"
         
-def get_shanghai_temp_markets(self, target_date):
+    def get_shanghai_temp_markets(self, target_date):
         """
         深度扫描：不放过任何包含 Shanghai 和 Temperature 的活跃合约
         """
