@@ -7,8 +7,11 @@ import plotly.express as px
 import json
 import re
 import math
+import numpy as np  # 确保添加了 numpy
 from datetime import datetime, timedelta, timezone # 增加 timezone 导入
 from streamlit_autorefresh import st_autorefresh
+from ensemble_api import EnsembleForecastAPI  # 引入气象数据层
+from engine import QuantEngine                # 引入量化逻辑层
 
 # =========================================================
 # 1. 页面基础配置 (必须作为第一个 Streamlit 命令执行)
@@ -240,6 +243,8 @@ def load_cache():
 def save_cache(data):
     with open("cache.json", "w") as f:
         json.dump(data, f)
+
+
 
 # ======================
 # 历史数据（双源修复版：精准拉取本地凌晨数据）
@@ -527,22 +532,6 @@ def decode_metar(raw, obs_time):
 # ======================
 # 模型
 # ======================
-def peak_probability(data):
-    if len(data) < 5:
-        return 0
-
-    if data[-1]["temp"] < data[-2]["temp"]:
-        return 95
-
-    temps = [x["temp"] for x in data[-5:]]
-    acc = (temps[-1] - temps[-2]) - (temps[-2] - temps[-3])
-    position = temps[-1] / max(temps)
-
-    score = 0
-    score += max(0, -acc) * 30
-    score += position * 50
-
-    return min(round(score), 100)
 
 # ======================
 # 启动 (彻底修复版)
@@ -590,7 +579,32 @@ try:
     last_dt = datetime.strptime(formatted_time, "%Y-%m-%d %H:%M")
     delay_min = (now_local() - last_dt).total_seconds() / 60
     # 如果超过 40 分钟未更新，视为延迟（标准 METAR 通常30分钟更新）
-    is_delayed = delay_min > 40  
+    is_delayed = delay_min > 40
+# =========================================================
+# 🚀 核心逻辑接入：盘前大模型 + 盘中贝叶斯推断
+# =========================================================
+target_date_str = now_local().strftime('%Y-%m-%d')
+ensemble_api = EnsembleForecastAPI()
+
+# 1. 抓取 GEFS 集合预报数据
+ensemble_data = ensemble_api.fetch_raw_ensemble(target_date_str)
+
+# 2. 运行量化引擎计算最终动态概率
+current_hour = now_local().hour + now_local().minute / 60.0
+# 这里将历史数据、今天抓到的最高温、现在的温度全部喂给 AI 引擎
+final_simulations = QuantEngine.calculate_combined_prob(
+    ensemble_data, max_temp, current['temp'], current_hour
+)
+
+# 3. 将模拟结果切分为 Polymarket 的温度区间 (例如 28度到31度)
+pm_buckets = [28, 29, 30, 31]
+true_probs = {}
+for i in range(len(pm_buckets)):
+    low = pm_buckets[i]
+    high = pm_buckets[i+1] if i+1 < len(pm_buckets) else 99
+    # 计算有多少次模拟落在了这个区间
+    prob = np.mean((final_simulations >= low) & (final_simulations < high))
+    true_probs[f"{low}°C"] = prob  
 except Exception as e:
     delay_min = 0
     is_delayed = False
@@ -645,29 +659,36 @@ if is_new and len(data) >= 2:
 col1, col2, col3 = st.columns([1,1.2,1])
 
 with col1:
-    st.markdown("### 🧠 见顶概率")
-    prob = peak_probability(data)
-    st.metric("概率", f"{prob}%")
-    st.progress(prob/100)
-
-    st.markdown("### 📊 概率解释")
-    if len(data) >= 2:
-        if data[-1]["temp"] < data[-2]["temp"]:
-            st.write("🔻 已下降（已见顶）")
-        else:
-            st.write("📈 上升中")
-
-    st.markdown("### 🚨 信号面板")
-    if is_delayed:
-        st.error(f"🚨 数据延迟：{int(delay_min)} 分钟")
-        st.error("🔴 信号已降级")
+st.markdown("### 🧠 动态概率引擎 (Bayesian)")
+    if ensemble_data:
+        st.caption(f"底层模型: GEFS | 成功获取平行宇宙成员: {len(ensemble_data)} 个")
     else:
-        if prob >= 90:
-            st.error("🔴 强卖")
-        elif prob > 60:
-            st.warning("🟡 接近顶部")
+        st.caption("⚠️ 未获取到 GEFS 数据，系统已无缝降级为日内贝叶斯推断")
+
+    # 循环渲染我们引擎算出来的真实概率进度条
+    for bucket, prob in true_probs.items():
+        st.write(f"**最终最高突破 {bucket} 的概率:** {prob*100:.1f}%")
+        st.progress(float(prob))
+
+    st.markdown("### 💰 实时套利信号 (Kelly)")
+    
+    if is_delayed:
+         st.error(f"🚨 METAR 数据延迟：{int(delay_min)} 分钟，为防范风险信号暂缓。")
+    else:
+        # 【注意】这里暂时模拟 Polymarket 的盘口价格。
+        # 下一步我们将用 WebSocket 替换这里，实现真正的实时自动化。
+        market_prices = {"28°C": 0.85, "29°C": 0.40, "30°C": 0.08, "31°C": 0.01}
+        
+        # 引擎将我们的真实概率与市场价格进行碰撞，寻找定价错误
+        signals = QuantEngine.get_kelly_signals(true_probs, market_prices, capital=10000)
+        
+        if not signals:
+            st.info("🕒 盘口暂无明显的正期望(+EV)套利机会，系统监控中...")
         else:
-            st.success("🟢 上升趋势")
+            for sig in signals:
+                st.warning(f"🚨 {sig['desc']} -> 目标区间: **{sig['bucket']}**")
+                st.write(f"预期收益(EV): +{sig['ev']:.3f} | 凯利建议下注: **${sig['bet']:.1f}**")
+                st.markdown("---")
             
  # === METAR 解码 ===     
     st.markdown("---")
