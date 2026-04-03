@@ -632,12 +632,15 @@ try:
             st.error("💔 甚至连 'Shanghai' 这个词都没在 200 条数据中找到。")
         else:
             st.success(f"找到了 {len(raw_sh_data)} 条包含 'Shanghai' 的原始数据！")
-            # 这里的 raw_sh_data 如果是列表，我们遍历打印
+            
             for i, item in enumerate(raw_sh_data):
-                st.markdown(f"### 📦 数据样本 {i+1}")
-                st.write(item)  # 使用 st.write 比 st.json 更兼容
-                if isinstance(item, dict):
-                    st.info(f"标题: {item.get('title', '无标题')}")
+                st.markdown(f"#### 📦 数据样本 {i+1} 原始文本内容：")
+                # 关键点：强制转为 str，确保 Streamlit 不会因为对象复杂而显示为空
+                try:
+                    raw_str = str(item)
+                    st.code(raw_str, language="json") # 使用代码块展示，最稳妥
+                except Exception as e:
+                    st.error(f"样本 {i+1} 转换失败: {e}")
                 st.divider()
 
 # 【调试代码 1】: 在 UI 上方展示发现的 Token 映射情况（排查对齐问题）
