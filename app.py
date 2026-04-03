@@ -623,35 +623,20 @@ try:
     pm_api = PolymarketAPI()
 
 # 2. 调度缓存的市场发现逻辑
+# 调用
     token_map, all_sh_titles = pm_api.get_shanghai_temp_markets(search_date)
 
     real_market_prices = {}
     if token_map:
         for label, info in token_map.items():
-            # info 是我们刚刚存进去的字典 {"token_id": ..., "price": ...}
+            # 这里的 info 是 {"token_id": "...", "price": 0.XX}
             price = info.get("price")
-            if price is not None:
-                # 标签对齐逻辑：从 "Above 30°C" 提取 "30°C"
-                match = re.search(r'(\d+)', label)
-                if match:
-                    clean_label = f"{match.group(1)}°C"
-                    real_market_prices[clean_label] = price
+            # 这里的 label 是 "Above 30°C" 或 "28°C or below"
+            match = re.search(r'(\d+)', str(label))
+            if match:
+                clean_label = f"{match.group(1)}°C"
+                real_market_prices[clean_label] = price
 
-# 3. 实时价格抓取 (不缓存价格，因为价格秒变)
-    real_market_prices = {}
-    if token_map:
-        with st.spinner("正在抓取实时 L2 订单簿..."):
-            for label, t_id in token_map.items():
-                price = pm_api.get_market_price(t_id)
-                if price is not None:
-                    # 【逻辑对齐】: 将 Polymarket 的标签 (如 "28°C or above") 
-                    # 映射到我们引擎的标签 (如 "28°C")
-                    import re
-                    # 提取字符串中的数字，例如从 "Above 28.5°C" 提取 "28"
-                    match = re.search(r'(\d+)', label)
-                    if match:
-                        clean_label = f"{match.group(1)}°C"
-                        real_market_prices[clean_label] = price 
 # =========================================================
 
 except Exception as e:
