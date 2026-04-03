@@ -10,8 +10,8 @@ class PolymarketAPI:
     def __init__(self):
         self.book_url = "https://clob.polymarket.com/book"
         self.search_url = "https://clob.polymarket.com/markets"
-
-   def get_shanghai_temp_markets(self, target_date):
+        
+    def get_shanghai_temp_markets(self, target_date):
         try:
             # 增加 limit 到 200，并尝试不带任何过滤条件
             params = {"limit": 200}
