@@ -623,16 +623,22 @@ try:
     pm_api = PolymarketAPI()
 
 # 2. 调度缓存的市场发现逻辑
-    token_map = fetch_cached_token_map(search_date)
+    token_map, all_sh_titles = fetch_cached_token_map(search_date)
 
 # 【调试代码 1】: 在 UI 上方展示发现的 Token 映射情况（排查对齐问题）
-    with st.expander("🛠️ 系统调试面板 (Market Debug)"):
-        st.write(f"当前搜索日期关键词: `{search_date}`")
-        if token_map:
-            st.success(f"已连接到 {len(token_map)} 个交易对")
-            st.json(token_map) # 查看原始 Label 和 ID
+    with st.expander("🛠️ 市场自动发现调试器"):
+        st.write(f"当前系统生成的搜索日期: `{search_date}`")
+        if not token_map:
+            st.error("未发现完全匹配的市场。")
+            if all_sh_titles:
+                st.write("但在 Polymarket 上发现了以下上海合约，请核对日期格式：")
+                for t in all_sh_titles:
+                    st.code(t) # 这样你会看到到底是 "Apr 3" 还是 "April 3"
+            else:
+                st.info("Polymarket 目前似乎没有挂出任何上海相关的活跃合约。")
         else:
-            st.error("未找到市场。请检查 Polymarket 上的标题格式是否包含如 'Apr 5' 这种字样。")
+            st.success("✅ 匹配成功！")
+            st.json(token_map)
 
 # 3. 实时价格抓取 (不缓存价格，因为价格秒变)
     real_market_prices = {}
