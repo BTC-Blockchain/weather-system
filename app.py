@@ -25,6 +25,14 @@ st.set_page_config(page_title="METAR监控系统", layout="wide")
 def now_local():
 # """获取北京时间 (UTC+8)"""
     return datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=8)
+# 【性能优化 】: 使用缓存函数，避免频繁搜索市场列表（Token ID 通常一天不变）
+@st.cache_data(ttl=3600)  # 性能优化：每小时只搜索一次市场列表,缓存1小时
+def fetch_cached_token_map(date_str):
+    """
+    封装市场发现逻辑，避免频繁请求 Polymarket 接口
+    """
+    pm_api_internal = PolymarketAPI()
+    return pm_api_internal.get_shanghai_temp_markets(date_str)
 
 # =========================================================
 # 3. 自动刷新与 CSS 注入 (极致紧凑布局)
@@ -610,13 +618,6 @@ try:
 # =========================================================
 # 🎯 性能优化版：Polymarket 自动化发现与价格抓取
 # =========================================================
-
-# 【性能优化 1】: 使用缓存函数，避免频繁搜索市场列表（Token ID 通常一天不变）
-@st.cache_data(ttl=3600)  # 缓存 1 小时
-def fetch_cached_token_map(date_str):
-    pm_api_internal = PolymarketAPI()
-    return pm_api_internal.get_shanghai_temp_markets(date_str)
-
 # 1. 自动生成搜索日期 (例如 "Apr 3")
 search_date = now_local().strftime('%b %-d') 
 pm_api = PolymarketAPI()
