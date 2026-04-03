@@ -627,14 +627,18 @@ try:
     # 调用新的侦听模式
     raw_sh_data = pm_api.get_shanghai_temp_markets(search_date)
 
-    with st.expander("🚨 原始数据侦听器 (Raw Data Sniffer)"):
+    with st.expander("🚨 原始数据侦听器 (Raw Data Sniffer)", expanded=True):
         if not raw_sh_data:
             st.error("💔 甚至连 'Shanghai' 这个词都没在 200 条数据中找到。")
-            st.write("这说明该市场可能不在 CLOB 订单簿中，或者其 API 路径不同。")
         else:
             st.success(f"找到了 {len(raw_sh_data)} 条包含 'Shanghai' 的原始数据！")
-            for item in raw_sh_data:
-                st.json(item) # <--- 仔细看这里的 "title" 或 "description"
+            # 这里的 raw_sh_data 如果是列表，我们遍历打印
+            for i, item in enumerate(raw_sh_data):
+                st.markdown(f"### 📦 数据样本 {i+1}")
+                st.write(item)  # 使用 st.write 比 st.json 更兼容
+                if isinstance(item, dict):
+                    st.info(f"标题: {item.get('title', '无标题')}")
+                st.divider()
 
 # 【调试代码 1】: 在 UI 上方展示发现的 Token 映射情况（排查对齐问题）
 #    with st.expander("🛠️ 市场自动发现调试器"):
