@@ -659,7 +659,7 @@ if is_new and len(data) >= 2:
 col1, col2, col3 = st.columns([1,1.2,1])
 
 with col1:
-st.markdown("### 🧠 动态概率引擎 (Bayesian)")
+    st.markdown("### 🧠 动态概率引擎 (Bayesian)")
     if ensemble_data:
         st.caption(f"底层模型: GEFS | 成功获取平行宇宙成员: {len(ensemble_data)} 个")
     else:
