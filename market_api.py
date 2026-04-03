@@ -12,52 +12,25 @@ class PolymarketAPI:
         self.search_url = "https://clob.polymarket.com/markets"
         
     def get_shanghai_temp_markets(self, target_date):
-        """
-        深度扫描：不放过任何包含 Shanghai 和 Temperature 的活跃合约
-        """
         try:
-            # 1. 尝试使用 sampling 端点，这通常返回最活跃的实时交易对
+            # 这里的 sampling-markets 通常返回的是列表
             search_url = "https://clob.polymarket.com/sampling-markets"
             resp = requests.get(search_url, timeout=10)
             data_list = resp.json()
             
-            token_map = {}
-            all_shanghai_titles = []
+            all_shanghai_raw = [] 
             
-            # 2. 准备我们要找的“蛛丝马迹”
-            # 我们找的是：同时包含 [Shanghai] 和 [Temperature] 的项
-            # 或者是 [Shanghai] 和 [今天日期] 的项
-            parts = target_date.split(' ')
-            month_abbr = parts[0] # "Apr"
-            day_num = parts[1].lstrip('0') # "3"
-
+            # 强制遍历所有返回的数据
             for mkt in data_list:
-                # 把整个对象转为字符串，进行无死角搜索
-                raw_content = str(mkt).lower()
-                
-                # 寻找关键组合：上海 + 温度 + 日期
-                if "shanghai" in raw_content and ("temp" in raw_content or "degree" in raw_content):
-                    title = mkt.get("title", "Unknown")
-                    all_shanghai_titles.append(title)
-                    
-                    # 如果这刚好是今天的日期
-                    if day_num in title:
-                        logger.info(f"🎯 深度嗅探成功: {title}")
-                        
-                        # 3. 提取 Token (注意：这里直接从 mkt['tokens'] 获取)
-                        tokens = mkt.get("tokens", [])
-                        for tk in tokens:
-                            outcome = tk.get("outcome") # 如 "Above 30°C"
-                            t_id = tk.get("token_id")
-                            token_map[outcome] = t_id
-                        
-                        # 只要找到一个包含今天日期的上海温度市场就返回
-                        return token_map, all_shanghai_titles
+                # 深度搜索：在整个 JSON 字符串里找关键词
+                if "shanghai" in str(mkt).lower():
+                    all_shanghai_raw.append(mkt)
             
-            return token_map, all_shanghai_titles
+            # 返回所有搜到的原始对象，让 app.py 去展示
+            return all_shanghai_raw, [] # 返回两个值保持格式统一
         except Exception as e:
-            logger.error(f"🚨 深度嗅探失败: {e}")
-            return {}, []
+            logger.error(f"侦听模式出错: {e}")
+            return [], []
 
     def get_market_price(self, token_id):
         """获取指定 Token 的最优卖价 (Ask)"""
