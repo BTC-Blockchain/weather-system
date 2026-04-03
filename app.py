@@ -583,28 +583,28 @@ try:
 # =========================================================
 # 🚀 核心逻辑接入：盘前大模型 + 盘中贝叶斯推断
 # =========================================================
-target_date_str = now_local().strftime('%Y-%m-%d')
-ensemble_api = EnsembleForecastAPI()
+    target_date_str = now_local().strftime('%Y-%m-%d')
+    ensemble_api = EnsembleForecastAPI()
 
 # 1. 抓取 GEFS 集合预报数据
-ensemble_data = ensemble_api.fetch_raw_ensemble(target_date_str)
+    ensemble_data = ensemble_api.fetch_raw_ensemble(target_date_str)
 
 # 2. 运行量化引擎计算最终动态概率
-current_hour = now_local().hour + now_local().minute / 60.0
+    current_hour = now_local().hour + now_local().minute / 60.0
 # 这里将历史数据、今天抓到的最高温、现在的温度全部喂给 AI 引擎
-final_simulations = QuantEngine.calculate_combined_prob(
-    ensemble_data, max_temp, current['temp'], current_hour
-)
+    final_simulations = QuantEngine.calculate_combined_prob(
+        ensemble_data, max_temp, current['temp'], current_hour
+    )
 
 # 3. 将模拟结果切分为 Polymarket 的温度区间 (例如 28度到31度)
-pm_buckets = [28, 29, 30, 31]
-true_probs = {}
-for i in range(len(pm_buckets)):
-    low = pm_buckets[i]
-    high = pm_buckets[i+1] if i+1 < len(pm_buckets) else 99
-    # 计算有多少次模拟落在了这个区间
-    prob = np.mean((final_simulations >= low) & (final_simulations < high))
-    true_probs[f"{low}°C"] = prob  
+    pm_buckets = [28, 29, 30, 31]
+    true_probs = {}
+    for i in range(len(pm_buckets)):
+        low = pm_buckets[i]
+        high = pm_buckets[i+1] if i+1 < len(pm_buckets) else 99
+        # 计算有多少次模拟落在了这个区间
+        prob = np.mean((final_simulations >= low) & (final_simulations < high))
+        true_probs[f"{low}°C"] = prob
 except Exception as e:
     delay_min = 0
     is_delayed = False
