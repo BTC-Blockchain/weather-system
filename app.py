@@ -623,20 +623,30 @@ try:
     pm_api = PolymarketAPI()
 
 # 2. 调度缓存的市场发现逻辑
-# 调用
     token_map, all_sh_titles = pm_api.get_shanghai_temp_markets(search_date)
-
+    
     real_market_prices = {}
     if token_map:
+        st.success(f"✅ 已连接到市场: {all_sh_titles[0] if all_sh_titles else ''}")
+        
         for label, info in token_map.items():
-            # 这里的 info 是 {"token_id": "...", "price": 0.XX}
+            # 1. 获取价格 (来自 Gamma API)
             price = info.get("price")
-            # 这里的 label 是 "Above 30°C" 或 "28°C or below"
+            
+            # 2. 标签清洗逻辑：从 "Above 30°C" 或 "30°C or below" 中提取数字 30
+            # 使用正则表达式匹配数字
             match = re.search(r'(\d+)', str(label))
             if match:
-                clean_label = f"{match.group(1)}°C"
+                temp_value = match.group(1)
+                # 统一格式为 "30°C" 以便和气象预报数据对齐
+                clean_label = f"{temp_value}°C"
                 real_market_prices[clean_label] = price
-
+                
+        # 调试：查看对齐后的市场价格映射
+        with st.sidebar.expander("🔍 内部对齐数据"):
+            st.write("清洗后的市场价格:", real_market_prices)
+            st.write("预报概率 Key 示例:", list(ensemble_probs.keys())[:1])
+            st.write("市场价格 Key 示例:", list(real_market_prices.keys())[:1])
 # =========================================================
 
 except Exception as e:
