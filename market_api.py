@@ -11,48 +11,65 @@ class PolymarketAPI:
         self.book_url = "https://clob.polymarket.com/book"
         self.search_url = "https://clob.polymarket.com/markets"
 
-    def get_shanghai_temp_markets(self, target_date):
+def get_shanghai_temp_markets(self, target_date):
         """
-        性能建议：此函数在 app.py 中应配合 st.cache_data 使用
-        自动发现：根据日期搜索上海气温市场
+        自动发现：根据日期模糊搜索上海气温市场
+        :param target_date: 传入格式如 "Apr 3"
+        :return: (token_map, found_titles) -> 返回匹配到的ID字典和搜到的所有相关标题列表
         """
         try:
-            # 这里的 active=true 过滤掉已结束的市场
+            # 1. 扩大搜索范围：获取所有当前活跃的市场
             params = {"next_cursor": "", "active": "true"}
-            logger.info(f"正在从 Polymarket 搜索包含关键词: 'Shanghai' 和 '{target_date}' 的市场...")
+            logger.info(f"--- 启动市场扫描: 目标日期 [{target_date}] ---")
             
             resp = requests.get(self.search_url, params=params, timeout=10)
             all_markets = resp.json()
             
             token_map = {}
+            all_shanghai_titles = [] # 用于存储搜到的所有上海市场，供 UI 调试显示
             market_found = False
             
+            # 2. 准备模糊匹配的关键词
+            # 从 "Apr 3" 中提取 "Apr" 和 "3"
+            parts = target_date.split(' ')
+            month_abbr = parts[0]  # "Apr"
+            day_num = parts[1].lstrip('0')  # 去掉前导0，变成 "3"
+
             for mkt in all_markets.get("data", []):
                 title = mkt.get("title", "")
-                # 调试信息：打印发现的所有上海相关市场
-                if "Shanghai" in title:
-                    logger.info(f"发现候选市场: {title}")
                 
-                # 匹配逻辑：必须同时包含上海和日期
-                if "Shanghai" in title and target_date in title:
-                    market_found = True
-                    logger.info(f"🎯 成功匹配目标市场: {title}")
+                # 第一层过滤：必须包含 "Shanghai"
+                if "Shanghai" in title:
+                    all_shanghai_titles.append(title)
+                    logger.info(f"🔍 发现上海相关合约: {title}")
                     
-                    # Polymarket 存储的是字符串形式的 JSON
-                    import json
-                    outcomes = json.loads(mkt.get("outcomes", "[]"))
-                    token_ids = json.loads(mkt.get("clobTokenIds", "[]"))
-                    
-                    for i in range(len(outcomes)):
-                        token_map[outcomes[i]] = token_ids[i]
+                    # 第二层模糊匹配：标题需同时包含月份简写(Apr)和天数(3)
+                    # 这样可以兼容 "Apr 3", "April 3rd", "Apr 03" 等多种写法
+                    if month_abbr in title and day_num in title:
+                        market_found = True
+                        logger.info(f"🎯 模糊匹配成功: {title}")
+                        
+                        # 解析 Outcome 和 Token ID
+                        import json
+                        outcomes = json.loads(mkt.get("outcomes", "[]"))
+                        token_ids = json.loads(mkt.get("clobTokenIds", "[]"))
+                        
+                        # 将结果存入映射表
+                        for i in range(len(outcomes)):
+                            token_map[outcomes[i]] = token_ids[i]
+                        
+                        # 找到第一个匹配的市场后通常即可停止（Polymarket每天通常只有一个上海气温市场）
+                        break
             
             if not market_found:
-                logger.warning(f"未找到匹配日期 {target_date} 的上海市场。")
-                
-            return token_map
+                logger.warning(f"❌ 扫描结束：未能匹配到包含 '{month_abbr}' 和 '{day_num}' 的上海市场")
+            
+            # 注意：这里返回了两个值，方便 app.py 渲染调试面板
+            return token_map, all_shanghai_titles
+
         except Exception as e:
-            logger.error(f"市场自动搜索发生错误: {e}")
-            return {}
+            logger.error(f"🚨 市场自动搜索发生异常: {e}")
+            return {}, []
 
     def get_market_price(self, token_id):
         """获取指定 Token 的最优卖价 (Ask)"""
