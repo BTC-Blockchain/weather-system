@@ -626,29 +626,29 @@ try:
     token_map = fetch_cached_token_map(search_date)
 
 # 【调试代码 1】: 在 UI 上方展示发现的 Token 映射情况（排查对齐问题）
-with st.expander("🛠️ 系统调试面板 (Market Debug)"):
-    st.write(f"当前搜索日期关键词: `{search_date}`")
-    if token_map:
-        st.success(f"已连接到 {len(token_map)} 个交易对")
-        st.json(token_map) # 查看原始 Label 和 ID
-    else:
-        st.error("未找到市场。请检查 Polymarket 上的标题格式是否包含如 'Apr 5' 这种字样。")
+    with st.expander("🛠️ 系统调试面板 (Market Debug)"):
+        st.write(f"当前搜索日期关键词: `{search_date}`")
+        if token_map:
+            st.success(f"已连接到 {len(token_map)} 个交易对")
+            st.json(token_map) # 查看原始 Label 和 ID
+        else:
+            st.error("未找到市场。请检查 Polymarket 上的标题格式是否包含如 'Apr 5' 这种字样。")
 
 # 3. 实时价格抓取 (不缓存价格，因为价格秒变)
-real_market_prices = {}
-if token_map:
-    with st.spinner("正在抓取实时 L2 订单簿..."):
-        for label, t_id in token_map.items():
-            price = pm_api.get_market_price(t_id)
-            if price is not None:
-                # 【逻辑对齐】: 将 Polymarket 的标签 (如 "28°C or above") 
-                # 映射到我们引擎的标签 (如 "28°C")
-                import re
-                # 提取字符串中的数字，例如从 "Above 28.5°C" 提取 "28"
-                match = re.search(r'(\d+)', label)
-                if match:
-                    clean_label = f"{match.group(1)}°C"
-                    real_market_prices[clean_label] = price 
+    real_market_prices = {}
+    if token_map:
+        with st.spinner("正在抓取实时 L2 订单簿..."):
+            for label, t_id in token_map.items():
+                price = pm_api.get_market_price(t_id)
+                if price is not None:
+                    # 【逻辑对齐】: 将 Polymarket 的标签 (如 "28°C or above") 
+                    # 映射到我们引擎的标签 (如 "28°C")
+                    import re
+                    # 提取字符串中的数字，例如从 "Above 28.5°C" 提取 "28"
+                    match = re.search(r'(\d+)', label)
+                    if match:
+                        clean_label = f"{match.group(1)}°C"
+                        real_market_prices[clean_label] = price 
 # =========================================================
 
 except Exception as e:
