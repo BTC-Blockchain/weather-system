@@ -13,27 +13,35 @@ class PolymarketAPI:
 
     def get_shanghai_temp_markets(self, target_date):
         """
-        自动发现：根据日期模糊搜索上海气温市场
+        自动发现：根据日期模糊搜索上海气温市场（修复全称/缩写兼容性）
         :param target_date: 传入格式如 "Apr 3"
         :return: (token_map, found_titles) -> 返回匹配到的ID字典和搜到的所有相关标题列表
         """
         try:
-            # 1. 扩大搜索范围：获取所有当前活跃的市场
-            params = {"next_cursor": "", "active": "true"}
+            # 1. 扩大搜索范围：获取所有当前活跃的市场，增加 limit 确保不被截断
+            params = {"limit": 100, "active": "true"}
             logger.info(f"--- 启动市场扫描: 目标日期 [{target_date}] ---")
             
             resp = requests.get(self.search_url, params=params, timeout=10)
             all_markets = resp.json()
             
             token_map = {}
-            all_shanghai_titles = [] # 用于存储搜到的所有上海市场，供 UI 调试显示
+            all_shanghai_titles = []  # 用于存储搜到的所有上海市场，供 UI 调试显示
             market_found = False
             
             # 2. 准备模糊匹配的关键词
             # 从 "Apr 3" 中提取 "Apr" 和 "3"
             parts = target_date.split(' ')
-            month_abbr = parts[0]  # "Apr"
-            day_num = parts[1].lstrip('0')  # 去掉前导0，变成 "3"
+            month_abbr = parts[0]   # 例如 "Apr"
+            day_num = parts[1].lstrip('0')    # 例如 "3"
+
+            # 建立月份映射表，解决 Apr -> April 的匹配问题
+            month_full_map = {
+                "Jan": "January", "Feb": "February", "Mar": "March", "Apr": "April",
+                "May": "May", "Jun": "June", "Jul": "July", "Aug": "August",
+                "Sep": "September", "Oct": "October", "Nov": "November", "Dec": "December"
+            }
+            month_full = month_full_map.get(month_abbr, month_abbr)
 
             for mkt in all_markets.get("data", []):
                 title = mkt.get("title", "")
@@ -43,11 +51,17 @@ class PolymarketAPI:
                     all_shanghai_titles.append(title)
                     logger.info(f"🔍 发现上海相关合约: {title}")
                     
-                    # 第二层模糊匹配：标题需同时包含月份简写(Apr)和天数(3)
-                    # 这样可以兼容 "Apr 3", "April 3rd", "Apr 03" 等多种写法
-                    if month_abbr in title and day_num in title:
+                    # 第二层模糊匹配逻辑优化：
+                    # A. 月份匹配：标题中包含简写 "Apr" 或 全称 "April"
+                    month_match = (month_abbr in title or month_full in title)
+                    
+                    # B. 日期精确匹配：使用正则表达式确保匹配到独立的数字 3
+                    # \b 代表单词边界，防止 "3" 匹配到 "13", "23" 或 "30"
+                    day_match = re.search(r'\b' + day_num + r'\b', title)
+                    
+                    if month_match and day_match:
                         market_found = True
-                        logger.info(f"🎯 模糊匹配成功: {title}")
+                        logger.info(f"🎯 模糊匹配成功 (全称/缩写兼容): {title}")
                         
                         # 解析 Outcome 和 Token ID
                         import json
@@ -58,13 +72,12 @@ class PolymarketAPI:
                         for i in range(len(outcomes)):
                             token_map[outcomes[i]] = token_ids[i]
                         
-                        # 找到第一个匹配的市场后通常即可停止（Polymarket每天通常只有一个上海气温市场）
+                        # 找到第一个匹配的市场后停止扫描
                         break
             
             if not market_found:
-                logger.warning(f"❌ 扫描结束：未能匹配到包含 '{month_abbr}' 和 '{day_num}' 的上海市场")
+                logger.warning(f"❌ 扫描结束：未能匹配到日期格式，系统生成为 '{month_abbr}/{month_full} {day_num}'")
             
-            # 注意：这里返回了两个值，方便 app.py 渲染调试面板
             return token_map, all_shanghai_titles
 
         except Exception as e:
