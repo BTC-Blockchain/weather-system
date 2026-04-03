@@ -1,45 +1,81 @@
-# market_api.py
 import requests
 import logging
+import json
+import re
 
-# 配置日志
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class PolymarketAPI:
     def __init__(self):
-        self.book_url = "https://clob.polymarket.com/book"
-        self.search_url = "https://clob.polymarket.com/markets"
-        
+        # 注意：这是网页端使用的 Gamma API，数据最全
+        self.gamma_url = "https://gamma-api.polymarket.com/markets"
+
     def get_shanghai_temp_markets(self, target_date):
+        """
+        通过 Gamma API 获取网页端实时可见的市场数据
+        """
         try:
-            # 这里的 sampling-markets 通常返回的是列表
-            search_url = "https://clob.polymarket.com/sampling-markets"
-            resp = requests.get(search_url, timeout=10)
+            # 1. 构造搜索参数：直接在 API 层面搜索 Shanghai
+            params = {
+                "active": "true",
+                "limit": 50,
+                "search": "Shanghai",
+                "order": "activeStartTime",
+                "ascending": "false"
+            }
+            logger.info(f"--- 正在通过 Gamma API 检索: {target_date} ---")
+            
+            resp = requests.get(self.gamma_url, params=params, timeout=10)
             data_list = resp.json()
             
-            all_shanghai_raw = [] 
+            token_map = {}
+            all_sh_titles = []
             
-            # 强制遍历所有返回的数据
-            for mkt in data_list:
-                # 深度搜索：在整个 JSON 字符串里找关键词
-                if "shanghai" in str(mkt).lower():
-                    all_shanghai_raw.append(mkt)
-            
-            # 返回所有搜到的原始对象，让 app.py 去展示
-            return all_shanghai_raw, [] # 返回两个值保持格式统一
-        except Exception as e:
-            logger.error(f"侦听模式出错: {e}")
-            return [], []
+            # 2. 准备匹配关键词 (例如 "April", "3")
+            month_abbr = target_date.split(' ')[0] # "Apr"
+            day_num = target_date.split(' ')[1].lstrip('0') # "3"
 
-    def get_market_price(self, token_id):
-        """获取指定 Token 的最优卖价 (Ask)"""
-        try:
-            resp = requests.get(self.book_url, params={"token_id": token_id}, timeout=5)
-            data = resp.json()
-            if data.get("asks"):
-                return float(data["asks"][0]["price"])
-            return None
+            for mkt in data_list:
+                title = mkt.get("question", mkt.get("title", ""))
+                all_sh_titles.append(title)
+                
+                # 模糊匹配日期和温度关键词
+                # 检查标题是否包含 (Apr 或 April) 且 包含数字 (3)
+                if ("shanghai" in title.lower() and 
+                    (month_abbr.lower() in title.lower() or "april" in title.lower()) and 
+                    (f" {day_num}" in title or f" {day_num}?" in title)):
+                    
+                    logger.info(f"🎯 成功定位网页端市场: {title}")
+                    
+                    # 3. 提取 Outcome 和 Price (Gamma API 的结构不同)
+                    # 注意：Gamma API 通常直接在 outcomes 字段里提供实时价格
+                    outcomes = json.loads(mkt.get("outcomes", "[]"))
+                    outcome_prices = json.loads(mkt.get("outcomePrices", "[]"))
+                    clob_token_ids = json.loads(mkt.get("clobTokenIds", "[]"))
+                    
+                    for i in range(len(outcomes)):
+                        label = outcomes[i]
+                        # 尝试获取价格，如果获取不到则设为 None
+                        price = float(outcome_prices[i]) if i < len(outcome_prices) else None
+                        t_id = clob_token_ids[i] if i < len(clob_token_ids) else None
+                        
+                        # 重点：这里我们直接存下 Label 到 ID 的映射
+                        token_map[label] = {
+                            "token_id": t_id,
+                            "price": price  # Gamma API 直接给出了价格，甚至不需要再调一次接口！
+                        }
+                    
+                    return token_map, all_sh_titles
+            
+            return {}, all_sh_titles
         except Exception as e:
-            logger.error(f"获取 Token {token_id} 价格失败: {e}")
-            return None
+            logger.error(f"Gamma API 访问失败: {e}")
+            return {}, []
+
+    def get_market_price(self, token_data):
+        """
+        由于 Gamma API 已经自带了价格，这个函数可以作为备用或直接返回已有价格
+        """
+        if isinstance(token_data, dict):
+            return token_data.get("price")
+        return None
