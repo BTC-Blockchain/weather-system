@@ -619,11 +619,11 @@ try:
 # 🎯 性能优化版：Polymarket 自动化发现与价格抓取
 # =========================================================
 # 1. 自动生成搜索日期 (例如 "Apr 3")
-search_date = now_local().strftime('%b %-d') 
-pm_api = PolymarketAPI()
+    search_date = now_local().strftime('%b %-d') 
+    pm_api = PolymarketAPI()
 
 # 2. 调度缓存的市场发现逻辑
-token_map = fetch_cached_token_map(search_date)
+    token_map = fetch_cached_token_map(search_date)
 
 # 【调试代码 1】: 在 UI 上方展示发现的 Token 映射情况（排查对齐问题）
 with st.expander("🛠️ 系统调试面板 (Market Debug)"):
