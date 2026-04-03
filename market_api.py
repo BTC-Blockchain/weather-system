@@ -12,68 +12,72 @@ class PolymarketAPI:
 
     def get_shanghai_temp_markets(self, target_date):
         """
-        全量雷达模式：不再依赖 API 搜索，直接从活跃池中筛选
+        全量扫描模式：不再依赖 API 搜索，直接从活跃池中筛选最新的气温合约
         """
         try:
-            # 1. 获取较大量的活跃市场（增加到 100，不带 search 参数，避免 API 逻辑干扰）
+            # 1. 扩大范围：抓取 200 个活跃市场，按成交量降序排列
+            # 气温合约通常成交非常活跃，按 volume24hr 排序能让它排在前面
             params = {
                 "active": "true",
-                "limit": 100,
+                "limit": 200,
                 "closed": "false",
-                "order": "volume24hr", # 按成交量排序，气温合约通常成交活跃
+                "order": "volume24hr", 
                 "ascending": "false"
             }
-            logger.info(f"--- 🛰️ 启动全量雷达扫描 (目标: {target_date}) ---")
+            logger.info(f"--- 🛰️ 启动全量扫描 (目标日期: {target_date}) ---")
             
             resp = requests.get(self.gamma_url, params=params, timeout=10)
-            data_list = resp.json()
+            result = resp.json()
             
-            # 兼容字典格式包裹的列表
-            if isinstance(data_list, dict):
-                data_list = data_list.get("data") or data_list.get("results") or []
-
+            # 结构兼容性处理
+            data_list = result if isinstance(result, list) else result.get("data", [])
+            
             token_map = {}
             all_sh_titles = []
             
-            # 2. 匹配关键词准备
+            # 2. 匹配关键词准备 (例如 "Apr", "3")
             parts = target_date.split(' ')
             month_abbr = parts[0].lower()   # "apr"
             day_num = parts[1].lstrip('0')  # "3"
 
             for mkt in data_list:
-                # 获取标题并转为小写进行全扫描
+                # 获取标题（Gamma 优先看 question 字段）
                 title = (mkt.get("question") or mkt.get("title") or "").strip()
                 if not title: continue
                 
                 title_lc = title.lower()
                 
-                # 🔍 核心硬核匹配：必须同时包含 "shanghai" 和 "3" (且排除 2021/2023 等过时年份)
+                # 🔍 核心逻辑：必须包含 "shanghai" 且排除历史年份
                 if "shanghai" in title_lc:
-                    all_sh_titles.append(title) # 记录下来供 UI 显示
+                    # 排除 2021/2023/2024 等历史干扰项
+                    is_history = any(yr in title_lc for yr in ["2021", "2023", "2024", "2025"])
+                    if is_history: continue
                     
-                    # 只有当标题包含月份(apr/april) 且 包含当天的数字 3 时
+                    all_sh_titles.append(title)
+                    
+                    # 模糊匹配：包含 (Apr 或 April) 且 包含数字 3
                     month_match = (month_abbr in title_lc or "april" in title_lc)
                     day_match = re.search(r'\b' + day_num + r'\b', title_lc)
                     
-                    # 额外保险：排除历史年份（如果你在 2026 年，就排除 2023/2021）
-                    is_history = any(yr in title_lc for yr in ["2021", "2023", "2024", "2025"])
-                    
-                    if month_match and day_match and not is_history:
-                        logger.info(f"🎯 捕获实时上海气温合约: {title}")
+                    if month_match and day_match:
+                        logger.info(f"🎯 成功锁定实时合约: {title}")
                         
-                        # 3. 提取数据
-                        outcomes = mkt.get("outcomes")
-                        prices = mkt.get("outcomePrices")
-                        tokens = mkt.get("clobTokenIds")
-                        
-                        # 解析 JSON 字符串（如果需要）
-                        if isinstance(outcomes, str): outcomes = json.loads(outcomes)
-                        if isinstance(prices, str): prices = json.loads(prices)
-                        if isinstance(tokens, str): tokens = json.loads(tokens)
+                        # 3. 提取数据（处理可能的字符串格式 JSON）
+                        def get_field(key):
+                            val = mkt.get(key, [])
+                            return json.loads(val) if isinstance(val, str) else val
 
+                        outcomes = get_field("outcomes")
+                        prices = get_field("outcomePrices")
+                        tokens = get_field("clobTokenIds")
+                        
                         for i in range(len(outcomes)):
                             label = outcomes[i]
-                            p = float(prices[i]) if i < len(prices) else 0.0
+                            # 提取价格（字符串转浮点）
+                            try:
+                                p = float(prices[i]) if i < len(prices) else 0.0
+                            except: p = 0.0
+                            
                             t_id = tokens[i] if i < len(tokens) else ""
                             token_map[label] = {"token_id": t_id, "price": p}
                         
@@ -82,7 +86,7 @@ class PolymarketAPI:
             return {}, all_sh_titles
 
         except Exception as e:
-            logger.error(f"🚨 雷达扫描发生故障: {e}")
+            logger.error(f"🚨 扫描器崩溃: {e}")
             return {}, []
 
     def get_market_price(self, token_data):
