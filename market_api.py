@@ -12,60 +12,61 @@ class PolymarketAPI:
 
     def get_shanghai_temp_markets(self, target_date):
         """
-        全兼容模式：支持 List 和 Dict 两种返回格式
+        全量雷达模式：不再依赖 API 搜索，直接从活跃池中筛选
         """
         try:
+            # 1. 获取较大量的活跃市场（增加到 100，不带 search 参数，避免 API 逻辑干扰）
             params = {
                 "active": "true",
-                "limit": 50,
-                "search": "Shanghai"
+                "limit": 100,
+                "closed": "false",
+                "order": "volume24hr", # 按成交量排序，气温合约通常成交活跃
+                "ascending": "false"
             }
+            logger.info(f"--- 🛰️ 启动全量雷达扫描 (目标: {target_date}) ---")
+            
             resp = requests.get(self.gamma_url, params=params, timeout=10)
-            result = resp.json()
+            data_list = resp.json()
             
-            # 【核心适配逻辑】
-            data_list = []
-            if isinstance(result, list):
-                # 报错原因就在这里：既然是 list，直接赋值即可
-                data_list = result
-                logger.info(f"✅ 识别到列表格式，包含 {len(data_list)} 条记录")
-            elif isinstance(result, dict):
-                # 如果是字典，尝试所有可能的嵌套路径
-                data_list = result.get("data") or result.get("results") or result.get("markets") or []
-                logger.info(f"✅ 识别到字典格式，提取出 {len(data_list)} 条记录")
-            
-            if not data_list:
-                logger.warning("⚠️ 扫描完成，但未发现任何数据列表。")
-                return {}, []
+            # 兼容字典格式包裹的列表
+            if isinstance(data_list, dict):
+                data_list = data_list.get("data") or data_list.get("results") or []
 
             token_map = {}
             all_sh_titles = []
             
-            # 日期匹配准备 (Apr, 3)
+            # 2. 匹配关键词准备
             parts = target_date.split(' ')
-            month_abbr = parts[0].lower()   
-            day_num = parts[1].lstrip('0') 
+            month_abbr = parts[0].lower()   # "apr"
+            day_num = parts[1].lstrip('0')  # "3"
 
             for mkt in data_list:
-                # 获取标题：Gamma API 优先看 question 字段
-                title = mkt.get("question") or mkt.get("title") or ""
-                all_sh_titles.append(title)
+                # 获取标题并转为小写进行全扫描
+                title = (mkt.get("question") or mkt.get("title") or "").strip()
+                if not title: continue
                 
-                title_lower = title.lower()
-                # 只要包含上海，且包含月份(apr/april)和日期数字
-                if "shanghai" in title_lower:
-                    month_match = (month_abbr in title_lower or "april" in title_lower)
-                    day_match = re.search(r'\b' + day_num + r'\b', title)
+                title_lc = title.lower()
+                
+                # 🔍 核心硬核匹配：必须同时包含 "shanghai" 和 "3" (且排除 2021/2023 等过时年份)
+                if "shanghai" in title_lc:
+                    all_sh_titles.append(title) # 记录下来供 UI 显示
                     
-                    if month_match and day_match:
-                        logger.info(f"🎯 匹配成功: {title}")
+                    # 只有当标题包含月份(apr/april) 且 包含当天的数字 3 时
+                    month_match = (month_abbr in title_lc or "april" in title_lc)
+                    day_match = re.search(r'\b' + day_num + r'\b', title_lc)
+                    
+                    # 额外保险：排除历史年份（如果你在 2026 年，就排除 2023/2021）
+                    is_history = any(yr in title_lc for yr in ["2021", "2023", "2024", "2025"])
+                    
+                    if month_match and day_match and not is_history:
+                        logger.info(f"🎯 捕获实时上海气温合约: {title}")
                         
-                        # 提取 Outcome 和 Price
-                        outcomes = mkt.get("outcomes") or []
-                        prices = mkt.get("outcomePrices") or []
-                        tokens = mkt.get("clobTokenIds") or []
+                        # 3. 提取数据
+                        outcomes = mkt.get("outcomes")
+                        prices = mkt.get("outcomePrices")
+                        tokens = mkt.get("clobTokenIds")
                         
-                        # 如果 API 返回的是 JSON 字符串，则解析它
+                        # 解析 JSON 字符串（如果需要）
                         if isinstance(outcomes, str): outcomes = json.loads(outcomes)
                         if isinstance(prices, str): prices = json.loads(prices)
                         if isinstance(tokens, str): tokens = json.loads(tokens)
@@ -74,7 +75,6 @@ class PolymarketAPI:
                             label = outcomes[i]
                             p = float(prices[i]) if i < len(prices) else 0.0
                             t_id = tokens[i] if i < len(tokens) else ""
-                            
                             token_map[label] = {"token_id": t_id, "price": p}
                         
                         return token_map, all_sh_titles
@@ -82,7 +82,7 @@ class PolymarketAPI:
             return {}, all_sh_titles
 
         except Exception as e:
-            logger.error(f"🚨 最终尝试失败: {e}")
+            logger.error(f"🚨 雷达扫描发生故障: {e}")
             return {}, []
 
     def get_market_price(self, token_data):
