@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone # 增加 timezone 导入
 from streamlit_autorefresh import st_autorefresh
 from ensemble_api import EnsembleForecastAPI  # 引入气象数据层
 from engine import QuantEngine                # 引入量化逻辑层
+from market_api import PolymarketAPI          # 接入真实市场数据
 
 # =========================================================
 # 1. 页面基础配置 (必须作为第一个 Streamlit 命令执行)
@@ -605,6 +606,50 @@ try:
         # 计算有多少次模拟落在了这个区间
         prob = np.mean((final_simulations >= low) & (final_simulations < high))
         true_probs[f"{low}°C"] = prob
+
+# =========================================================
+# 🎯 性能优化版：Polymarket 自动化发现与价格抓取
+# =========================================================
+
+# 【性能优化 1】: 使用缓存函数，避免频繁搜索市场列表（Token ID 通常一天不变）
+@st.cache_data(ttl=3600)  # 缓存 1 小时
+def fetch_cached_token_map(date_str):
+    pm_api_internal = PolymarketAPI()
+    return pm_api_internal.get_shanghai_temp_markets(date_str)
+
+# 1. 自动生成搜索日期 (例如 "Apr 3")
+search_date = now_local().strftime('%b %-d') 
+pm_api = PolymarketAPI()
+
+# 2. 调度缓存的市场发现逻辑
+token_map = fetch_cached_token_map(search_date)
+
+# 【调试代码 1】: 在 UI 上方展示发现的 Token 映射情况（排查对齐问题）
+with st.expander("🛠️ 系统调试面板 (Market Debug)"):
+    st.write(f"当前搜索日期关键词: `{search_date}`")
+    if token_map:
+        st.success(f"已连接到 {len(token_map)} 个交易对")
+        st.json(token_map) # 查看原始 Label 和 ID
+    else:
+        st.error("未找到市场。请检查 Polymarket 上的标题格式是否包含如 'Apr 5' 这种字样。")
+
+# 3. 实时价格抓取 (不缓存价格，因为价格秒变)
+real_market_prices = {}
+if token_map:
+    with st.spinner("正在抓取实时 L2 订单簿..."):
+        for label, t_id in token_map.items():
+            price = pm_api.get_market_price(t_id)
+            if price is not None:
+                # 【逻辑对齐】: 将 Polymarket 的标签 (如 "28°C or above") 
+                # 映射到我们引擎的标签 (如 "28°C")
+                import re
+                # 提取字符串中的数字，例如从 "Above 28.5°C" 提取 "28"
+                match = re.search(r'(\d+)', label)
+                if match:
+                    clean_label = f"{match.group(1)}°C"
+                    real_market_prices[clean_label] = price 
+# =========================================================
+
 except Exception as e:
     delay_min = 0
     is_delayed = False
@@ -670,25 +715,36 @@ with col1:
         st.write(f"**最终最高突破 {bucket} 的概率:** {prob*100:.1f}%")
         st.progress(float(prob))
 
+# =========================================================
+# 💰 盈利信号展示
+# =========================================================
     st.markdown("### 💰 实时套利信号 (Kelly)")
     
-    if is_delayed:
-         st.error(f"🚨 METAR 数据延迟：{int(delay_min)} 分钟，为防范风险信号暂缓。")
-    else:
-        # 【注意】这里暂时模拟 Polymarket 的盘口价格。
-        # 下一步我们将用 WebSocket 替换这里，实现真正的实时自动化。
-        market_prices = {"28°C": 0.85, "29°C": 0.40, "30°C": 0.08, "31°C": 0.01}
+    # 【调试代码 2】: 检查数据对齐情况
+    if real_market_prices:
+        # 寻找 true_probs 和 real_market_prices 都有的交集区间
+        common_buckets = set(true_probs.keys()) & set(real_market_prices.keys())
         
-        # 引擎将我们的真实概率与市场价格进行碰撞，寻找定价错误
-        signals = QuantEngine.get_kelly_signals(true_probs, market_prices, capital=10000)
-        
-        if not signals:
-            st.info("🕒 盘口暂无明显的正期望(+EV)套利机会，系统监控中...")
+        if not common_buckets:
+            st.warning("⚠️ 标签匹配失败。系统概率标签与市场标签不一致。")
+            st.write("系统标签:", list(true_probs.keys()))
+            st.write("市场标签:", list(real_market_prices.keys()))
         else:
-            for sig in signals:
-                st.warning(f"🚨 {sig['desc']} -> 目标区间: **{sig['bucket']}**")
-                st.write(f"预期收益(EV): +{sig['ev']:.3f} | 凯利建议下注: **${sig['bet']:.1f}**")
-                st.markdown("---")
+            # 运行信号引擎
+            signals = QuantEngine.get_kelly_signals(true_probs, real_market_prices)
+            
+            if not signals:
+                st.info("🕒 监控中：当前 $P_{true}$ 与 $P_{market}$ 差值未达到阈值。")
+            else:
+                for sig in signals:
+                    st.warning(f"🚨 **{sig['bucket']} 买入机会**")
+                    st.write(f"系统胜率: {true_probs[sig['bucket']]*100:.1f}%")
+                    st.write(f"市场价格: ${real_market_prices[sig['bucket']]:.3f}")
+                    st.write(f"**建议下注: ${sig['bet']:.0f}** (Kelly 25%)")
+                    st.markdown("---")
+    else:
+        st.info("等待市场数据同步...")
+    
             
  # === METAR 解码 ===     
     st.markdown("---")
