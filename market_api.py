@@ -11,7 +11,7 @@ class PolymarketAPI:
         self.book_url = "https://clob.polymarket.com/book"
         self.search_url = "https://clob.polymarket.com/markets"
 
-def get_shanghai_temp_markets(self, target_date):
+    def get_shanghai_temp_markets(self, target_date):
         """
         自动发现：根据日期模糊搜索上海气温市场
         :param target_date: 传入格式如 "Apr 3"
