@@ -691,7 +691,7 @@ if st.session_state.audio_enabled and is_new:
     
     # 视觉弹窗双重保障
     st.toast("🔔 抓取到新 METAR 数据！", icon="🔊", duration=16)
-    st.toast("🔔 已触发声音警报！", icon="🔊", duration=10")
+    st.toast("🔔 已触发声音警报！", icon="🔊", duration=10)
 
 # 数据来源
 delay_info = f"**{int(delay_min)}** 分钟" 
